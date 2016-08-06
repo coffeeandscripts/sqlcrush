@@ -49,3 +49,16 @@ def cursor_up(cursor, vert_list, scr_dim):
 def input_n():
 
     return 0
+
+def open_new_database(scr_top, scr_dim):
+
+    curses.start_color()
+    curses.init_pair(1, curses.COLOR_BLACK, curses.COLOR_WHITE)
+    new_database_window = curses.newwin(1, scr_dim[1], 1, 0)
+    new_database_window.bkgd(curses.color_pair(1))
+    new_database_box = textpad.Textbox(new_database_window)
+    new_database_window.refresh()
+    scr_top.addstr(2, 1, "Open new database. Leave blank and hit enter to close")
+    new_database = new_database_box.edit()
+
+    return new_database
