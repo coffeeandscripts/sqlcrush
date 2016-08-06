@@ -57,7 +57,7 @@ def cursor_up(cursor, vert_list, scr_dim, cursor_other):
     if cursor[0] > 0:
         cursor[0] = cursor[0] - 1
     if cursor_other[2] == 1:
-        if cursor[0] == 1 and cursor[1] != 1:
+        if cursor[0] == 1 and cursor[1] != 1 and cursor[1] != 0:
             cursor[0] = 2
             cursor[1] = cursor[1] - 1
         if cursor[0] == 1 and cursor[1] == 1:

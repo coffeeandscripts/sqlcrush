@@ -365,9 +365,20 @@ while x != ord("0"):
         if open_window == 0:
             open_window = 1
             cursor_sub = [0, 0, 0, 0]
-    if x == 263:
+    if x == 263 or x == 127:
         if open_window == 1:
             open_window = 0
+    if x == 100:        # d
+        if open_window == 1 and cursor_main[2] == 1 and cursor_sub[1] + cursor_sub[0] > 1 and cursor_sub[2] == 0:
+            current_table = database.get_table(shown_tables[cursor_main[0] + cursor_main[1] - 1], open_database)
+            database.delete_database_entry(cursor_main, cursor_sub, columns, shown_tables, current_table, open_database, scr_bottom)
+            if cursor_sub[1] == 0 or cursor_sub[1] == 1:
+                cursor_sub[0] = cursor_sub[0] - 1
+            else:
+                cursor_sub[0] = cursor_sub[0] - 1
+                cursor_sub[1] = cursor_sub[1] - 1
+        if open_window == 1 and cursor_main[2] == 1 and cursor_sub[1] + cursor_sub[0] > 1 and cursor_sub[2] + cursor_sub[3] > 0:
+            database.delete_database_cell(cursor_main, cursor_sub, columns, shown_tables, current_table, open_database, scr_bottom)
     if x == 261:
         if open_window == 1:
             if cursor_sub[0] + cursor_sub[1] == 0:
