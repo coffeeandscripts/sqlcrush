@@ -69,9 +69,18 @@ def cursor_up(cursor, vert_list, scr_dim, cursor_other):
 
     return cursor
 
-def input_n():
+def update_cell(scr_dim, original):
 
-    return 0
+    #curses.start_color()
+    #curses.init_pair(1, curses.COLOR_BLACK, curses.COLOR_WHITE)
+    new_entry_window = curses.newwin(1, scr_dim[1]-2, scr_dim[0] - 3, 1)
+    #new_entry_window.bkgd(curses.color_pair(1))
+    new_entry_box = textpad.Textbox(new_entry_window)
+    new_entry_window.addstr(0, 0, str(original), curses.A_REVERSE)
+    new_entry_window.refresh()
+    new_entry = new_entry_box.edit()
+
+    return new_entry
 
 def open_new_database(scr_top, scr_dim):
 

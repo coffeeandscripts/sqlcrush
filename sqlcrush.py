@@ -379,6 +379,13 @@ while x != ord("0"):
                 cursor_sub[1] = cursor_sub[1] - 1
         if open_window == 1 and cursor_main[2] == 1 and cursor_sub[1] + cursor_sub[0] > 1 and cursor_sub[2] + cursor_sub[3] > 0:
             database.delete_database_cell(cursor_main, cursor_sub, columns, shown_tables, current_table, open_database, scr_bottom)
+
+    if x == 117:        # u
+        if open_window == 1 and cursor_main[2] == 1 and cursor_sub[1] + cursor_sub[0] > 1 and cursor_sub[2] + cursor_sub[3] > 0:
+            database.update_database_cell(cursor_main, cursor_sub, columns, shown_tables, current_table, open_database, scr_bottom, scr_dim)
+
+
+
     if x == 261:
         if open_window == 1:
             if cursor_sub[0] + cursor_sub[1] == 0:
