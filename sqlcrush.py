@@ -142,7 +142,6 @@ while x != ord("0"):
         term_scr(scr)
         scr = init_scr()
         scr_dim = get_scr_dim(scr)
-        win = open_option_window(scr_dim)
         term_size_change == False
 
     scr_dim = get_scr_dim(scr)
@@ -192,20 +191,27 @@ while x != ord("0"):
                 n = n + 1
             all_tables = open_database.execute("SELECT name FROM sqlite_master WHERE type='table'")
             n = 2
+            p = 0
             shown_tables = []
             for table in all_tables:
                 shown_tables.append(str(table)[2:-3])
+                if n - 2 >= scr_dim[0] - 10:
+                    continue
+                if cursor_main[1] >= p + 1:
+                    p = p + 1
+                    continue
                 if len(str(table)) > 16:
-                    if cursor_main[0] + cursor_main[1] == n - 1:
+                    if cursor_main[0] + cursor_main[1] == p + 1:
                         scr_show_left.addstr(n, 1, str(table)[2:13] + "...", curses.A_REVERSE)
                     else:
                         scr_show_left.addstr(n, 1, str(table)[2:13] + "...")
                 else:
-                    if cursor_main[0] + cursor_main[1] == n - 1:
+                    if cursor_main[0] + cursor_main[1] == p + 1:
                         scr_show_left.addstr(n, 1, str(table)[2:-3], curses.A_REVERSE)
                     else:
                         scr_show_left.addstr(n, 1, str(table)[2:-3])
                 n = n + 1
+                p = p + 1
 
             if open_window == 1:
                 open_table = shown_tables[cursor_main[0] + cursor_main[1] - 1]
@@ -217,22 +223,41 @@ while x != ord("0"):
                     scr_show_main.addstr(1, 6, "Name:")
                     scr_show_main.addstr(1, 30, "Type:")
                     n = 0
-
+                    p = 0
                     for column in columns:
-                        if cursor_sub[0] + cursor_sub[1] == n + 1: 
-                            scr_show_main.addstr(2+n, 3, str(column[0]), curses.A_REVERSE)
-                            scr_show_main.addstr(2+n, 6, str(column[1]), curses.A_REVERSE)
-                            scr_show_main.addstr(2+n, 30, str(column[2]), curses.A_REVERSE)
+                        if n >= scr_dim[0] - 10:
+                            continue
+                        if cursor_sub[1] >= p + 1:
+                            p = p + 1
+                            continue
+                        id_print = str(column[0]) + " "
+                        name_print = " " + str(column[1])
+                        type_print = " " + str(column[2])
+                        while len(id_print) < 4:
+                            id_print = " " + id_print
+                        while len(name_print) < 24:
+                            name_print = name_print + " "
+                        while len(type_print) < 12:
+                            type_print = type_print + " "
+                        if cursor_sub[0] + cursor_sub[1] == p + 1: 
+                            scr_show_main.addstr(2+n, 3, id_print, curses.A_REVERSE)
+                            scr_show_main.addstr(2+n, 6, name_print, curses.A_REVERSE)
+                            scr_show_main.addstr(2+n, 30, type_print, curses.A_REVERSE)
                         else:
-                            scr_show_main.addstr(2+n, 3, str(column[0]))
-                            scr_show_main.addstr(2+n, 6, str(column[1]))
-                            scr_show_main.addstr(2+n, 30, str(column[2]))
+                            scr_show_main.addstr(2+n, 3, id_print)
+                            scr_show_main.addstr(2+n, 6, name_print)
+                            scr_show_main.addstr(2+n, 30, type_print)
                         n = n + 1
+                        p = p + 1
                 elif cursor_main[2] == 1:
                     
                     current_table = database.get_table(shown_tables[cursor_main[0] + cursor_main[1] - 1], open_database)
                     n = 0
+                    m = 0
                     for column in columns:
+                        if cursor_sub[3] >= m + 1:
+                            m = m + 1
+                            continue
                         if 2+12*n < scr_dim[1] - 16 - 12:
                             if len(str(column[1])) >= 12:
                                 short_printing = str(column[1])[0:9] + ".."
@@ -256,16 +281,26 @@ while x != ord("0"):
                                     scr_show_main.addstr(1, 2+12*n, full_printing)
                             n = n + 1
                     n = 0
+                    p = 0
                     entry_list = [0]
                     for entry in current_table[shown_tables[cursor_main[0] + cursor_main[1] - 1]]:
                         m = 0
+                        q = 0
                         entry_list.append(entry[m])
+                        if n >= scr_dim[0] - 10:
+                            continue
+                        if cursor_sub[1] >= p + 1:
+                            p = p + 1
+                            continue
                         for column in columns:
+                            if cursor_sub[3] >= q + 1:
+                                q = q + 1
+                                continue
                             if 2+12*m < scr_dim[1] - 16 - 12:
-                                if len(str(entry[m])) >= 12:
-                                    short_printing = str(entry[m])[0:9].replace('\n', ' ') + ".."
-                                    full_printing = str(entry[m]).replace('\n', ' ')
-                                    if cursor_sub[0] + cursor_sub[1] == n + 2:
+                                if len(str(entry[q])) >= 12:
+                                    short_printing = str(entry[q])[0:9].replace('\n', ' ') + ".."
+                                    full_printing = str(entry[q]).replace('\n', ' ')
+                                    if cursor_sub[0] + cursor_sub[1] == p + 2:
                                         if cursor_sub[2] == m+1 or cursor_sub[2] == 0:
                                             scr_show_main.addstr(n+2, 2+12*m, short_printing, curses.A_REVERSE)
                                             if cursor_sub[2] != 0:
@@ -283,14 +318,14 @@ while x != ord("0"):
                                     else:
                                         scr_show_main.addstr(n+2, 2+12*m, str(short_printing))
                                 else:
-                                    full_printing = str(entry[m]).replace('\n', ' ')
+                                    full_printing = str(entry[q]).replace('\n', ' ')
                                     while len(full_printing) < 11:
                                         full_printing = " " + full_printing
-                                    if cursor_sub[0] + cursor_sub[1] == n + 2:
+                                    if cursor_sub[0] + cursor_sub[1] == p + 2:
                                         if cursor_sub[2] == m+1 or cursor_sub[2] == 0:
                                             scr_show_main.addstr(n+2, 2+12*m, full_printing, curses.A_REVERSE)
                                             if cursor_sub[2] != 0:
-                                                scr_bottom.addstr(0, 1, str(entry[m]).replace('\n', ' '))
+                                                scr_bottom.addstr(0, 1, str(entry[q]).replace('\n', ' '))
                                         else:
                                             scr_show_main.addstr(n+2, 2+12*m, full_printing)
                                     elif cursor_sub[0] + cursor_sub[1] == 1:
@@ -301,7 +336,9 @@ while x != ord("0"):
                                     else:
                                         scr_show_main.addstr(n+2, 2+12*m, full_printing)
                                 m = m + 1
+                                q = q + 1
                         n = n + 1
+                        p = p + 1
                     columns.append("Blank")
                 elif cursor_main[2] == 2:
                     pass
@@ -323,9 +360,6 @@ while x != ord("0"):
     refresh_windows(current_screen, scr_top, scr_front_main, scr_show_left, scr_show_main, scr_bottom)
 
     x = scr.getch()
-
-    #if x != -1 and x != 261 and x != 260 and x != 258 and x != 259 and x != 10 and x != 263:
-    #    last_x = x
 
     if x == 10:
         if open_window == 0:
@@ -355,20 +389,20 @@ while x != ord("0"):
             pass
     elif x == 258:
         if open_window == 0:
-            cursor_main = user_input.cursor_down(cursor_main, open_list, scr_dim)
+            cursor_main = user_input.cursor_down(cursor_main, open_list, scr_dim, cursor_sub)
             cursor_sub = [0, 0, 0, 0]
         elif open_window == 1 and cursor_main[2] == 1:
-            cursor_sub = user_input.cursor_down(cursor_sub, entry_list, scr_dim)
+            cursor_sub = user_input.cursor_down(cursor_sub, entry_list, scr_dim, cursor_main)
         else:
-            cursor_sub = user_input.cursor_down(cursor_sub, open_list, scr_dim)
+            cursor_sub = user_input.cursor_down(cursor_sub, open_list, scr_dim, cursor_main)
     elif x == 259:
         if open_window == 0:
-            cursor_main = user_input.cursor_up(cursor_main, open_list, scr_dim)
+            cursor_main = user_input.cursor_up(cursor_main, open_list, scr_dim, cursor_sub)
             cursor_sub = [0, 0, 0, 0]
         elif open_window == 1 and cursor_main[2] == 1:
-            cursor_sub = user_input.cursor_up(cursor_sub, entry_list, scr_dim)
+            cursor_sub = user_input.cursor_up(cursor_sub, entry_list, scr_dim, cursor_main)
         else:
-            cursor_sub = user_input.cursor_up(cursor_sub, open_list, scr_dim)
+            cursor_sub = user_input.cursor_up(cursor_sub, open_list, scr_dim, cursor_main)
     elif x == 104:      # h
         if current_screen == 1:
             current_screen = 2
