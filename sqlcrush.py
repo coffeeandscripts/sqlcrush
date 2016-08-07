@@ -105,12 +105,7 @@ def refresh_windows(current_screen, scr_top, scr_front_main, scr_show_left, scr_
         scr_top.refresh()
 
 ## WORKFLOW ##
-print("SQLcrush")
-
-time.sleep(1)
-print()
-print("Initializing...")
-time.sleep(2)
+database.print_intro()
 
 scr = init_scr()
 scr_dim = get_scr_dim(scr)
@@ -122,6 +117,8 @@ open_window = 0
 header_list = ["Struct", "Browse", "Execute"]
 
 help_screen = 0
+
+table_executions = {}
 
 if len(sys.argv) == 1:
     current_database = 0
@@ -195,6 +192,8 @@ while x != ord("0"):
             shown_tables = []
             for table in all_tables:
                 shown_tables.append(str(table)[2:-3])
+                if str(table)[2:-3] not in table_executions:
+                    table_executions[str(table)[2:-3]] = []
                 if n - 2 >= scr_dim[0] - 10:
                     continue
                 if cursor_main[1] >= p + 1:
@@ -341,7 +340,21 @@ while x != ord("0"):
                         p = p + 1
                     columns.append("Blank")
                 elif cursor_main[2] == 2:
-                    pass
+                    executions_list = table_executions[str(shown_tables[cursor_main[0] + cursor_main[1] - 1])]
+                    n = 0
+                    p = 0
+                    for execution in reversed(executions_list):
+                        if n >= scr_dim[0] - 10:
+                            continue
+                        if cursor_sub[1] >= p + 1:
+                            p = p + 1
+                            continue
+                        if cursor_sub[0] + cursor_sub[1] == p + 1:
+                            scr_show_main.addstr(n+2, 1, str(execution), curses.A_REVERSE)
+                        else:
+                            scr_show_main.addstr(n+2, 1, str(execution))
+                        n = n + 1
+                        p = p + 1
             elif open_window == 0:
                 scr_show_main.addstr(2, 3, "Press ENTER to view/edit")
 
@@ -371,18 +384,27 @@ while x != ord("0"):
     if x == 100:        # d
         if open_window == 1 and cursor_main[2] == 1 and cursor_sub[1] + cursor_sub[0] > 1 and cursor_sub[2] == 0:
             current_table = database.get_table(shown_tables[cursor_main[0] + cursor_main[1] - 1], open_database)
-            database.delete_database_entry(cursor_main, cursor_sub, columns, shown_tables, current_table, open_database, scr_bottom)
+            table_executions = database.delete_database_entry(cursor_main, cursor_sub, columns, shown_tables, current_table, open_database, scr_bottom, table_executions)
             if cursor_sub[1] == 0 or cursor_sub[1] == 1:
                 cursor_sub[0] = cursor_sub[0] - 1
             else:
                 cursor_sub[0] = cursor_sub[0] - 1
                 cursor_sub[1] = cursor_sub[1] - 1
         if open_window == 1 and cursor_main[2] == 1 and cursor_sub[1] + cursor_sub[0] > 1 and cursor_sub[2] + cursor_sub[3] > 0:
-            database.delete_database_cell(cursor_main, cursor_sub, columns, shown_tables, current_table, open_database, scr_bottom)
+            table_executions = database.delete_database_cell(cursor_main, cursor_sub, columns, shown_tables, current_table, open_database, scr_bottom, table_executions)
+        if open_window == 1 and cursor_main[2] == 2 and cursor_sub[1] + cursor_sub[0] > 0:
+            table_executions = database.delete_execution(cursor_main, cursor_sub, shown_tables, current_table, table_executions)
+            if cursor_sub[0] > 1:
+                cursor_sub[0] = cursor_sub[0] - 1
+            elif cursor_sub[1] > 0:
+                cursor_sub[1] = cursor_sub[1] - 1
+            else:
+                cursor_sub[0] = cursor_sub[0] - 1
+
 
     if x == 117:        # u
         if open_window == 1 and cursor_main[2] == 1 and cursor_sub[1] + cursor_sub[0] > 1 and cursor_sub[2] + cursor_sub[3] > 0:
-            database.update_database_cell(cursor_main, cursor_sub, columns, shown_tables, current_table, open_database, scr_bottom, scr_dim)
+            table_executions = database.update_database_cell(cursor_main, cursor_sub, columns, shown_tables, current_table, open_database, scr_bottom, scr_dim, table_executions)
 
 
 
@@ -411,6 +433,8 @@ while x != ord("0"):
             cursor_sub = [0, 0, 0, 0]
         elif open_window == 1 and cursor_main[2] == 1:
             cursor_sub = user_input.cursor_down(cursor_sub, entry_list, scr_dim, cursor_main)
+        elif open_window == 1 and cursor_main[2] == 2:
+            cursor_sub = user_input.cursor_down(cursor_sub, executions_list, scr_dim, cursor_main)
         else:
             cursor_sub = user_input.cursor_down(cursor_sub, open_list, scr_dim, cursor_main)
     elif x == 259:
@@ -418,6 +442,8 @@ while x != ord("0"):
             cursor_main = user_input.cursor_up(cursor_main, open_list, scr_dim, cursor_sub)
             cursor_sub = [0, 0, 0, 0]
         elif open_window == 1 and cursor_main[2] == 1:
+            cursor_sub = user_input.cursor_up(cursor_sub, entry_list, scr_dim, cursor_main)
+        elif open_window == 1 and cursor_main[2] == 2:
             cursor_sub = user_input.cursor_up(cursor_sub, entry_list, scr_dim, cursor_main)
         else:
             cursor_sub = user_input.cursor_up(cursor_sub, open_list, scr_dim, cursor_main)

@@ -11,6 +11,25 @@ import user_input
 
 ## FUNCTIONS ##
 
+def print_intro():
+    
+    print(" ______   ______    __       ______   ______    __  __   ______   ___   ___     ")
+    print("/_____/\ /_____/\  /_/\     /_____/\ /_____/\  /_/\/_/\ /_____/\ /__/\ /__/\    ")
+    print("\::::_\/_\:::_ \ \ \:\ \    \:::__\/ \:::_ \ \ \:\ \:\ \\\\::::_\/_\::\ \\\\  \ \   ")
+    print(" \:\/___/\\\\:\ \ \ \_\:\ \    \:\ \  __\:(_) ) )_\:\ \:\ \\\\:\/___/\\\\::\/_\ .\ \  ")
+    print("  \_::._\:\\\\:\ \ /_ \\\\:\ \____\:\ \/_/\\\\: __ `\ \\\\:\ \:\ \\\\_::._\:\\\\:: ___::\ \ ")
+    print("    /____\:\\\\:\_-  \ \\\\:\/___/\\\\:\_\ \ \\\\ \ `\ \ \\\\:\_\:\ \ /____\:\\\\: \ \\\\::\ \\")
+    print("    \_____\/ \___|\_\_/\_____\/ \_____\/ \_\/ \_\/ \_____\/ \_____\/ \__\/ \::\/")
+    print()
+    print("                                                             by coffeeandscripts")
+
+    time.sleep(1)
+    print()
+    print("Initializing...")
+    time.sleep(2)
+
+
+
 def get_table(table_name, open_database):
     
     current_table = {table_name:{}}
@@ -45,7 +64,7 @@ def delete_database_entry(cursor_main, cursor_sub, columns, shown_tables, curren
 
     open_database.commit()
 
-def delete_database_cell(cursor_main, cursor_sub, columns, shown_tables, current_table, open_database, scr_bottom):
+def delete_database_cell(cursor_main, cursor_sub, columns, shown_tables, current_table, open_database, scr_bottom, table_executions):
 
     n = 0
 
@@ -62,6 +81,7 @@ def delete_database_cell(cursor_main, cursor_sub, columns, shown_tables, current
     sql_command = "UPDATE " + str(shown_tables[cursor_main[0] + cursor_main[1] - 1]) + " SET " + str(columns[cursor_sub[2] + cursor_sub[3] - 1][1]) + " = " + "NULL" + " WHERE " + str(current_entry_primary_key_name) + "=" + str(current_entry_primary_key_id)
     
     scr_bottom.addstr(1, 1, str(sql_command))
+    table_executions[str(shown_tables[cursor_main[0] + cursor_main[1] - 1])].append(str(sql_command))
 
     scr_bottom.refresh()
 
@@ -71,7 +91,9 @@ def delete_database_cell(cursor_main, cursor_sub, columns, shown_tables, current
 
     open_database.commit()
 
-def update_database_cell(cursor_main, cursor_sub, columns, shown_tables, current_table, open_database, scr_bottom, scr_dim):
+    return table_executions
+
+def update_database_cell(cursor_main, cursor_sub, columns, shown_tables, current_table, open_database, scr_bottom, scr_dim, table_executions):
 
     n = 0
 
@@ -92,6 +114,7 @@ def update_database_cell(cursor_main, cursor_sub, columns, shown_tables, current
         sql_command = "UPDATE " + str(shown_tables[cursor_main[0] + cursor_main[1] - 1]) + " SET " + str(columns[cursor_sub[2] + cursor_sub[3] - 1][1]) + " = '" + str(new_entry)[:-1] + "' WHERE " + str(current_entry_primary_key_name) + "=" + str(current_entry_primary_key_id)
 
         scr_bottom.addstr(1, 1, str(sql_command))
+        table_executions[str(shown_tables[cursor_main[0] + cursor_main[1] - 1])].append(str(sql_command))
 
         scr_bottom.refresh()
 
@@ -101,4 +124,15 @@ def update_database_cell(cursor_main, cursor_sub, columns, shown_tables, current
 
         open_database.commit()
 
+        return table_executions
+
+def delete_execution(cursor_main, cursor_sub, shown_tables, current_table, table_executions):
+
+    execution_entry_position = len(table_executions[str(shown_tables[cursor_main[0] + cursor_main[1] - 1])]) - cursor_sub[0] - cursor_sub[1]
+
+    execution_to_remove = table_executions[str(shown_tables[cursor_main[0] + cursor_main[1] - 1])][execution_entry_position]
+
+    table_executions[str(shown_tables[cursor_main[0] + cursor_main[1] - 1])].remove(str(execution_to_remove))
+
+    return table_executions
 
