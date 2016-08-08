@@ -24,7 +24,7 @@ def cursor_right(cursor, hoz_list, scr_dim):
     return cursor
 
 def cursor_left(cursor, hoz_list, scr_dim):
-    
+
     if cursor[2] > 0:
         cursor[2] = cursor[2] - 1
 
@@ -40,7 +40,7 @@ def cursor_down(cursor, vert_list, scr_dim, cursor_other):
 
     if cursor[0] + cursor[1] < max_list_length:
         cursor[0] = cursor[0] + 1
-    
+
     if cursor_other[2] == 1:
         if cursor[0] > scr_dim[0] - 9:
             cursor[0] = cursor[0] - 1
@@ -119,13 +119,10 @@ def find_value_input(scr_bottom, scr_dim):
     return new_value_input
 
 def new_execution_input(scr_dim):
-    
+
     new_execution_window = curses.newwin(1, scr_dim[1] - 28, 5, 40)
     new_execution_box = textpad.Textbox(new_execution_window)
     new_execution_window.refresh()
     new_execution_input = new_execution_box.edit()
 
     return new_execution_input
-
-
-

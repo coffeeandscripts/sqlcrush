@@ -87,3 +87,7 @@ ENV/
 
 # Rope project settings
 .ropeproject
+
+# OS generated files
+.DS_Store
+.DS_Store?

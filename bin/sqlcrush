@@ -1,0 +1,618 @@
+#!/usr/bin/env python
+
+## IMPORTS ##
+import curses
+import time
+import sys
+import os
+import sqlite3
+
+import sqlcrush
+from sqlcrush import database
+from sqlcrush import user_input
+
+## GLOBALS ##
+x = 1
+last_x = 0
+term_size_change = False
+option_window_open = False
+
+## FUNCTIONS ##
+#initialize the curses window and return scr
+def init_scr():
+
+    scr = curses.initscr()
+
+    curses.noecho()
+    curses.cbreak()
+    curses.curs_set(0)
+    curses.halfdelay(5)
+    scr.keypad(True)
+    scr.clear()
+
+    return scr
+
+#user scr to terminate the window and revert back to terminal
+def term_scr(scr):
+
+    curses.nocbreak()
+    scr.keypad(False)
+    curses.echo()
+    curses.endwin()
+
+#returns the number of columns or rows
+def get_scr_dim(scr):
+    return scr.getmaxyx()
+
+#returns True if there has been a change in the window size, otherwise False
+def check_term_size_change(scr, scr_dim):
+
+    change = False
+
+    if scr_dim != scr.getmaxyx():
+        change = True
+
+    return change
+
+def open_top_bar(scr_dim):
+
+    scr_top = curses.newwin(4, scr_dim[1], 0, 0)
+
+    return scr_top
+
+def open_front_main(scr_dim):
+
+    scr_front_main = curses.newwin(scr_dim[0]-4, scr_dim[1], 4, 0)
+
+    if scr_dim[1] > 64:
+        scr_front_main.addstr(2, 2, "HELP:")
+        scr_front_main.addstr(3, 2, "Make sure to open the database from the command line")
+        scr_front_main.addstr(4, 2, "e.g. sqlcrush demo.sqlite3")
+        scr_front_main.addstr(6, 2, "[h] Toggle help window")
+        scr_front_main.addstr(7, 2, "[Arrows] Move around database")
+        scr_front_main.addstr(8, 2, "[<>] Move between headers for each table")
+        scr_front_main.addstr(9, 2, "[delete] Move back to table select")
+        scr_front_main.addstr(10, 2, "[f] Find in database")
+        scr_front_main.addstr(11, 2, "[n] New database entry or new execution")
+        scr_front_main.addstr(12, 2, "[u] Update database entry")
+        scr_front_main.addstr(13, 2, "[d] Delete database entry, cell or execution")
+        scr_front_main.addstr(14, 2, "[q] Quit")
+        scr_front_main.addstr(16, 2, "Make sure to use q to quit otherwise changes won't save")
+
+        if scr_dim[0] > 25:
+            scr_front_main.addstr(18, 2, "Thank you for using SQLcrush. This was made to allow SQL")
+            scr_front_main.addstr(19, 2, "database manipulation to be done right in the console.")
+            scr_front_main.addstr(20, 2, "Feel free to hack with care. No changes are made to actual")
+            scr_front_main.addstr(21, 2, "database until SQLcrush is quit.")
+
+    else:
+        scr_front_main.addstr(2, 2, "HELP:")
+        scr_front_main.addstr(3, 2, "Open from shell")
+        scr_front_main.addstr(4, 2, "e.g. sqlcrush demo.sqlite3")
+        scr_front_main.addstr(6, 2, "[h] Toggle help window")
+        scr_front_main.addstr(7, 2, "[Arrows] Move around database")
+        scr_front_main.addstr(8, 2, "[<>] Move between headers for each table")
+        scr_front_main.addstr(9, 2, "[delete] Move back to table select")
+        scr_front_main.addstr(10, 2, "[f] Find in database")
+        scr_front_main.addstr(11, 2, "[n] New database entry or new execution")
+        scr_front_main.addstr(12, 2, "[u] Update database entry")
+        scr_front_main.addstr(13, 2, "[d] Delete database entry, cell or execution")
+        scr_front_main.addstr(14, 2, "[q] Quit")
+        scr_front_main.addstr(16, 2, "Save by quitting")
+
+    scr_front_main.border(0)
+
+    return scr_front_main
+
+def open_show_left(scr_dim):
+
+    scr_show_left = curses.newwin(scr_dim[0]-4-3, 16, 4, 0)
+
+    scr_show_left.border(0)
+
+    return scr_show_left
+
+def open_show_main(scr_dim):
+
+    scr_show_main = curses.newwin(scr_dim[0]-4-3, scr_dim[1]-16, 4, 16)
+
+    scr_show_main.border(0)
+
+    return scr_show_main
+
+def open_bottom_bar(scr_dim):
+
+    scr_bottom = curses.newwin(3, scr_dim[1], scr_dim[0]-3, 0)
+
+    return scr_bottom
+
+def refresh_windows(current_screen, scr_top, scr_front_main, scr_show_left, scr_show_main, scr_bottom):
+
+    if current_screen == 1:
+        scr_top.refresh()
+        scr_front_main.refresh()
+    elif current_screen == 2:
+        scr_top.refresh()
+        scr_show_left.refresh()
+        scr_show_main.refresh()
+        scr_bottom.refresh()
+    else:
+        scr_top.refresh()
+
+## WORKFLOW ##
+database.print_intro()
+
+scr = init_scr()
+scr_dim = get_scr_dim(scr)
+
+cursor_main = [0, 0, 0, 0]
+cursor_sub = [0, 0, 0, 0]
+open_window = 0
+
+header_list = ["Struct", "Browse", "Execute"]
+
+help_screen = 0
+find_list = []
+
+table_executions = {}
+
+if len(sys.argv) == 1:
+    current_database = 0
+    current_screen = 1
+elif len(sys.argv) == 2:
+    current_real_database = sys.argv[1]
+    current_database = ".temp_" + current_real_database
+    if os.path.isfile(current_database):
+        os.system("rm " + current_database)
+    current_screen = 2
+    os.system("cp " + current_real_database + " " + current_database)
+else:
+    current_database = 1
+    current_screen = 1
+
+try:
+    if current_database != 0:
+        open_database = sqlite3.connect(str(current_database))
+except:
+    current_database == 0
+
+#main loop
+while x != ord("q"):
+
+    term_size_change = check_term_size_change(scr, scr_dim)
+
+    if term_size_change == True:
+        term_scr(scr)
+        scr = init_scr()
+        scr_dim = get_scr_dim(scr)
+        term_size_change == False
+
+    scr_dim = get_scr_dim(scr)
+
+    scr_top = open_top_bar(scr_dim)
+    scr_front_main = open_front_main(scr_dim)
+    scr_show_left = open_show_left(scr_dim)
+    scr_show_main = open_show_main(scr_dim)
+    scr_bottom = open_bottom_bar(scr_dim)
+
+    scr.refresh()
+
+    scr_top.addstr(0, 0, "SQLcrush v0.1.1 - by coffeeandscripts")
+
+    if current_database == 0 or current_database == "0":
+        scr_top.addstr(1, 0, "No open database")
+    else:
+        scr_top.addstr(1, 0, str(current_real_database))
+        execution_length = 0
+        for table in table_executions:
+            for execution in table_executions[table]:
+                execution_length = execution_length + 1
+
+        scr_top.addstr(2, 0, str(execution_length) + " changes made")
+
+        if current_database != 0 and current_database != 1:
+
+            try:
+                open_database = sqlite3.connect(str(current_database))
+            except:
+                term_scr(scr)
+                print("Critical failure")
+                time.sleep(1)
+                sys.exit()
+
+
+
+            if x == 9:
+                if open_window == 0:
+                    open_window = 1
+                else:
+                    open_window = 0
+            scr_show_left.addstr(0, 2, str(current_real_database)[0:12], curses.A_REVERSE)
+            n = 0
+            for header in header_list:
+                if open_window == 1:
+                    if cursor_main[2] == n:
+                        scr_show_main.addstr(0, 2+n*8, str(header), curses.A_REVERSE)
+                    else:
+                        scr_show_main.addstr(0, 2+n*8, str(header))
+                else:
+                    scr_show_main.addstr(0, 2+n*8, str(header))
+                n = n + 1
+            all_tables = open_database.execute("SELECT name FROM sqlite_master WHERE type='table'")
+            n = 2
+            p = 0
+            shown_tables = []
+            for table in all_tables:
+                shown_tables.append(str(table)[2:-3])
+                if str(table)[2:-3] not in table_executions:
+                    table_executions[str(table)[2:-3]] = []
+                if n - 2 >= scr_dim[0] - 10:
+                    continue
+                if cursor_main[1] >= p + 1:
+                    p = p + 1
+                    continue
+                if len(str(table)) > 16:
+                    if cursor_main[0] + cursor_main[1] == p + 1:
+                        scr_show_left.addstr(n, 1, str(table)[2:13] + "...", curses.A_REVERSE)
+                    else:
+                        scr_show_left.addstr(n, 1, str(table)[2:13] + "...")
+                else:
+                    if cursor_main[0] + cursor_main[1] == p + 1:
+                        scr_show_left.addstr(n, 1, str(table)[2:-3], curses.A_REVERSE)
+                    else:
+                        scr_show_left.addstr(n, 1, str(table)[2:-3])
+                n = n + 1
+                p = p + 1
+
+            if open_window == 1:
+                open_table = shown_tables[cursor_main[0] + cursor_main[1] - 1]
+
+                columns = open_database.execute('PRAGMA TABLE_INFO({})'.format(shown_tables[cursor_main[0] + cursor_main[1] - 1])).fetchall()
+
+                if cursor_main[2] == 0:
+                    if scr_dim[1] > 12 + 6:
+                        scr_show_main.addstr(1, 2, "ID:")
+                    if scr_dim[1] > 12 + 30:
+                        scr_show_main.addstr(1, 6, "Name:")
+                    if scr_dim[1] > 12 + 42:
+                        scr_show_main.addstr(1, 30, "Type:")
+                    if scr_dim[1] > 12 + 52:
+                        scr_show_main.addstr(1, 42, "NotNull:")
+                    if scr_dim[1] > 12 + 64:
+                        scr_show_main.addstr(1, 52, "Default:")
+                    n = 0
+                    p = 0
+                    for column in columns:
+                        if n >= scr_dim[0] - 10:
+                            continue
+                        if cursor_sub[1] >= p + 1:
+                            p = p + 1
+                            continue
+                        id_print = str(column[0]) + " "
+                        name_print = str(column[1]) + " "
+                        if len(name_print) >= 24:
+                            name_print = name_print[0:20] + ".."
+
+                        type_print = str(column[2]) + " "
+                        if len(type_print) >= 12:
+                            type_print = type_print[0:8] + ".."
+
+                        notnull_print = str(column[3]) + " "
+                        if len(notnull_print) >= 10:
+                            notnull_print = notnull_print[0:6] + ".."
+
+                        default_print = str(column[4]) + " "
+                        if len(default_print) >= 12:
+                            default_print = default_print[0:8] + ".."
+
+                        while len(id_print) < 3:
+                            id_print = " " + id_print
+                        while len(name_print) < 24:
+                            name_print = name_print + " "
+                        while len(type_print) < 12:
+                            type_print = type_print + " "
+                        while len(notnull_print) < 10:
+                            notnull_print = notnull_print + " "
+                        while len(default_print) < 12:
+                            default_print = default_print + " "
+
+                        if cursor_sub[0] + cursor_sub[1] == p + 1:
+                            if scr_dim[1] > 12 + 6:
+                                scr_show_main.addstr(2+n, 3, id_print, curses.A_REVERSE)
+                            if scr_dim[1] > 12 + 30:
+                                scr_show_main.addstr(2+n, 6, name_print, curses.A_REVERSE)
+                            if scr_dim[1] > 12 + 42:
+                                scr_show_main.addstr(2+n, 30, type_print, curses.A_REVERSE)
+                            if scr_dim[1] > 12 + 52:
+                                scr_show_main.addstr(2+n, 42, notnull_print, curses.A_REVERSE)
+                            if scr_dim[1] > 12 + 64:
+                                scr_show_main.addstr(2+n, 52, default_print, curses.A_REVERSE)
+                        else:
+                            if column[5] == 1:
+                                if scr_dim[1] > 12 + 6:
+                                    scr_show_main.addstr(2+n, 3, id_print, curses.A_BLINK)
+                                if scr_dim[1] > 12 + 30:
+                                    scr_show_main.addstr(2+n, 6, name_print, curses.A_BLINK)
+                                if scr_dim[1] > 12 + 42:
+                                    scr_show_main.addstr(2+n, 30, type_print, curses.A_BLINK)
+                                if scr_dim[1] > 12 + 52:
+                                    scr_show_main.addstr(2+n, 42, notnull_print, curses.A_BLINK)
+                                if scr_dim[1] > 12 + 64:
+                                    scr_show_main.addstr(2+n, 52, default_print, curses.A_BLINK)
+                            else:
+                                if scr_dim[1] > 12 + 6:
+                                    scr_show_main.addstr(2+n, 3, id_print)
+                                if scr_dim[1] > 12 + 30:
+                                    scr_show_main.addstr(2+n, 6, name_print)
+                                if scr_dim[1] > 12 + 42:
+                                    scr_show_main.addstr(2+n, 30, type_print)
+                                if scr_dim[1] > 12 + 52:
+                                    scr_show_main.addstr(2+n, 42, notnull_print)
+                                if scr_dim[1] > 12 + 64:
+                                    scr_show_main.addstr(2+n, 52, default_print)
+                        n = n + 1
+                        p = p + 1
+                elif cursor_main[2] == 1:
+
+                    current_table = database.get_table(shown_tables[cursor_main[0] + cursor_main[1] - 1], open_database)
+                    n = 0
+                    m = 0
+                    for column in columns:
+                        if cursor_sub[3] >= m + 1:
+                            m = m + 1
+                            continue
+                        if 2+12*n < scr_dim[1] - 16 - 12:
+                            if len(str(column[1])) >= 12:
+                                short_printing = str(column[1])[0:9] + ".."
+                                if cursor_sub[0] + cursor_sub[1] == 1:
+                                    if cursor_sub[2] == n+1 or cursor_sub[2] == 0:
+                                        scr_show_main.addstr(1, 2+12*n, short_printing, curses.A_REVERSE)
+                                    else:
+                                        scr_show_main.addstr(1, 2+12*n, short_printing)
+                                else:
+                                    scr_show_main.addstr(1, 2+12*n, short_printing)
+                            else:
+                                full_printing = str(column[1])
+                                while len(full_printing) < 11:
+                                    full_printing = " " + full_printing
+                                if cursor_sub[0] + cursor_sub[1] == 1:
+                                    if cursor_sub[2] == n+1 or cursor_sub[2] == 0:
+                                        scr_show_main.addstr(1, 2+12*n, full_printing, curses.A_REVERSE)
+                                    else:
+                                        scr_show_main.addstr(1, 2+12*n, full_printing)
+                                else:
+                                    scr_show_main.addstr(1, 2+12*n, full_printing)
+                            n = n + 1
+                    n = 0
+                    p = 0
+                    find_counter = 0
+                    entry_list = [0]
+                    for entry in current_table[shown_tables[cursor_main[0] + cursor_main[1] - 1]]:
+                        m = 0
+                        q = 0
+                        entry_list.append(entry[m])
+                        if find_list != []:
+                            if int(p) not in find_list:
+                                p = p + 1
+                                continue
+                            else:
+                                find_counter = find_counter + 1
+                        if n >= scr_dim[0] - 10:
+                            continue
+                        if cursor_sub[1] >= p + 1:
+                            p = p + 1
+                            continue
+                        for column in columns:
+                            if cursor_sub[3] >= q + 1:
+                                q = q + 1
+                                continue
+                            if 2+12*m < scr_dim[1] - 16 - 12:
+                                if len(str(entry[q])) >= 12:
+                                    short_printing = str(entry[q])[0:9].replace('\n', ' ') + ".."
+                                    full_printing = str(entry[q]).replace('\n', ' ')
+                                    if (cursor_sub[0] + cursor_sub[1] == p + 2 and find_counter == 0) or cursor_sub[0] + cursor_sub[1] == find_counter + 1:
+                                        if cursor_sub[2] == m+1 or cursor_sub[2] == 0:
+                                            scr_show_main.addstr(n+2, 2+12*m, short_printing, curses.A_REVERSE)
+                                            if cursor_sub[2] != 0:
+                                                if len(full_printing) > scr_dim[1] - 10:
+                                                    scr_bottom.addstr(0, 1, full_printing[0:scr_dim[1]-2] + "...")
+                                                else:
+                                                    scr_bottom.addstr(0, 1, full_printing)
+                                        else:
+                                            scr_show_main.addstr(n+2, 2+12*m, short_printing)
+                                    elif cursor_sub[0] + cursor_sub[1] == 1:
+                                        if cursor_sub[2] == m+1:
+                                            scr_show_main.addstr(n+2, 2+12*m, short_printing, curses.A_REVERSE)
+                                        else:
+                                            scr_show_main.addstr(n+2, 2+12*m, short_printing)
+                                    else:
+                                        scr_show_main.addstr(n+2, 2+12*m, str(short_printing))
+                                else:
+                                    full_printing = str(entry[q]).replace('\n', ' ')
+                                    while len(full_printing) < 11:
+                                        full_printing = " " + full_printing
+                                    if (cursor_sub[0] + cursor_sub[1] == p + 2 and find_counter == 0) or cursor_sub[0] + cursor_sub[1] == find_counter + 1:
+                                        if cursor_sub[2] == m+1 or cursor_sub[2] == 0:
+                                            scr_show_main.addstr(n+2, 2+12*m, full_printing, curses.A_REVERSE)
+                                            if cursor_sub[2] != 0:
+                                                scr_bottom.addstr(0, 1, str(entry[q]).replace('\n', ' '))
+                                        else:
+                                            scr_show_main.addstr(n+2, 2+12*m, full_printing)
+                                    elif cursor_sub[0] + cursor_sub[1] == 1:
+                                        if cursor_sub[2] == m+1:
+                                            scr_show_main.addstr(n+2, 2+12*m, full_printing, curses.A_REVERSE)
+                                        else:
+                                            scr_show_main.addstr(n+2, 2+12*m, full_printing)
+                                    else:
+                                        scr_show_main.addstr(n+2, 2+12*m, full_printing)
+                                m = m + 1
+                                q = q + 1
+                        n = n + 1
+                        p = p + 1
+                    columns.append("Blank")
+                elif cursor_main[2] == 2:
+                    scr_show_main.addstr(1, 1, "New SQL execution:")
+                    executions_list = table_executions[str(shown_tables[cursor_main[0] + cursor_main[1] - 1])]
+                    n = 0
+                    p = 0
+                    for execution in reversed(executions_list):
+                        if len(execution) > scr_dim[1] - 18:
+                            execution_print = execution[0:scr_dim[1]-21] + ".."
+                        else:
+                            execution_print = execution
+                        if n >= scr_dim[0] - 10:
+                            continue
+                        if cursor_sub[1] >= p + 1:
+                            p = p + 1
+                            continue
+                        if cursor_sub[0] + cursor_sub[1] == p + 1:
+                            scr_show_main.addstr(n+2, 1, str(execution_print), curses.A_REVERSE)
+                            scr_bottom.addstr(1, 1, str(execution)[0:scr_dim[1] - 2])
+                        else:
+                            scr_show_main.addstr(n+2, 1, str(execution_print))
+                        n = n + 1
+                        p = p + 1
+            elif open_window == 0:
+                scr_show_main.addstr(2, 3, "Press ENTER to view/edit")
+
+    if open_window == 0 and current_screen == 2:
+        open_list = shown_tables
+    elif open_window == 1 and current_screen == 2:
+        open_list = columns
+    else:
+        pass
+
+    if scr_dim[1] > 90:
+        scr_bottom.addstr(2, 2, "[h] Help [Arrows/<>] Move [delete] Back [f] Find [n] New [u] Update [d] Delete [q] Exit", curses.A_REVERSE)
+    elif scr_dim[1] > 40:
+        scr_bottom.addstr(2, 2, "[h] Help [Arrows] Move [q] Exit", curses.A_REVERSE)
+    else:
+        scr_bottom.addstr(2, 2, "[h] Help [q] Exit", curses.A_REVERSE)
+
+    refresh_windows(current_screen, scr_top, scr_front_main, scr_show_left, scr_show_main, scr_bottom)
+
+    x = scr.getch()
+
+    if current_screen != 1:
+        if x == 10:
+            if open_window == 0 and cursor_main[0] > 0:
+                open_window = 1
+                cursor_sub = [0, 0, 0, 0]
+        if x == 263 or x == 127:
+            if open_window == 1:
+                open_window = 0
+        if x == 102:        # f
+            if open_window == 1 and cursor_main[2] == 1:
+                if len(find_list) == 0:
+                    find_list = database.find_database_entry(cursor_main, cursor_sub, columns, shown_tables, current_table, scr_bottom, scr_dim)
+                    cursor_sub = [0, 0, 0, 0]
+                else:
+                    find_list = []
+                    cursor_sub = [0, 0, 0, 0]
+        if x == 100:        # d
+            if open_window == 1 and cursor_main[2] == 1 and cursor_sub[1] + cursor_sub[0] > 1 and cursor_sub[2] == 0:
+                current_table = database.get_table(shown_tables[cursor_main[0] + cursor_main[1] - 1], open_database)
+                table_executions = database.delete_database_entry(cursor_main, cursor_sub, columns, shown_tables, current_table, open_database, scr_bottom, table_executions, current_real_database, current_database, find_list)
+
+                if find_list != []:
+                    find_list.remove(find_list[cursor_sub[0] + cursor_sub[1] - 2])
+
+                if cursor_sub[1] == 0 or cursor_sub[1] == 1:
+                    cursor_sub[0] = cursor_sub[0] - 1
+                else:
+                    cursor_sub[0] = cursor_sub[0] - 1
+                    cursor_sub[1] = cursor_sub[1] - 1
+                if find_list != []:
+                    n = 0
+                    for find in find_list:
+                        find_list[n] = find - 1
+                        if find_list[n] == -1:
+                            find_list.remove(find_list[n])
+                        n = n + 1
+
+            if open_window == 1 and cursor_main[2] == 1 and cursor_sub[1] + cursor_sub[0] > 1 and cursor_sub[2] + cursor_sub[3] > 0:
+                table_executions = database.delete_database_cell(cursor_main, cursor_sub, columns, shown_tables, current_table, open_database, scr_bottom, table_executions, find_list)
+            if open_window == 1 and cursor_main[2] == 2 and cursor_sub[1] + cursor_sub[0] > 0:
+                table_executions = database.delete_execution(cursor_main, cursor_sub, shown_tables, current_table, table_executions, current_real_database, current_database, open_database)
+                if cursor_sub[0] > 1:
+                    cursor_sub[0] = cursor_sub[0] - 1
+                elif cursor_sub[1] > 0:
+                    cursor_sub[1] = cursor_sub[1] - 1
+                else:
+                    cursor_sub[0] = cursor_sub[0] - 1
+
+
+        if x == 117:        # u
+            if open_window == 1 and cursor_main[2] == 1 and cursor_sub[1] + cursor_sub[0] > 1 and cursor_sub[2] + cursor_sub[3] > 0:
+                table_executions = database.update_database_cell(cursor_main, cursor_sub, columns, shown_tables, current_table, open_database, scr_bottom, scr_dim, table_executions, find_list)
+
+        if x == 110:        # n
+            if open_window == 1 and cursor_main[2] == 2:
+                scr_show_main.addstr(1, 1, "New SQL execution:", curses.A_REVERSE)
+                scr_show_main.refresh()
+                table_executions = database.new_execution(cursor_main, cursor_sub, table_executions, scr_dim, open_database, scr_show_main, shown_tables)
+            if open_window == 1 and cursor_main[2] == 1:
+                table_executions = database.new_entry(cursor_main, cursor_sub, table_executions, scr_dim, open_database, scr_bottom, shown_tables, columns)
+        if x == 261:
+            if open_window == 1:
+                if cursor_sub[0] + cursor_sub[1] == 0:
+                    cursor_main = user_input.cursor_right(cursor_main, header_list, scr_dim)
+                    cursor_sub = [0, 0, 0, 0]
+                else:
+                    cursor_sub = user_input.cursor_right(cursor_sub, columns, scr_dim)
+            else:
+                if cursor_main[0] > 0:
+                    open_window = 1
+                    cursor_sub == [0, 0, 0, 0]
+        if x == 62:     # >
+            if open_window == 1:
+                cursor_main = user_input.cursor_right(cursor_main, header_list, scr_dim)
+                cursor_sub = [0, 0, 0, 0]
+        if x == 60:     # <
+            if open_window == 1:
+                cursor_main = user_input.cursor_left(cursor_main, header_list, scr_dim)
+                cursor_sub = [0, 0, 0, 0]
+        elif x == 260:
+            if open_window == 1:
+                if cursor_sub[0] + cursor_sub[1] == 0:
+                    cursor_main = user_input.cursor_left(cursor_main, header_list, scr_dim)
+                    cursor_sub = [0, 0, 0, 0]
+                else:
+                    cursor_sub = user_input.cursor_left(cursor_sub, columns, scr_dim)
+            else:
+                pass
+        elif x == 258:
+            if open_window == 0:
+                cursor_main = user_input.cursor_down(cursor_main, open_list, scr_dim, cursor_sub)
+                cursor_sub = [0, 0, 0, 0]
+            elif open_window == 1 and cursor_main[2] == 1:
+                if find_list == []:
+                    cursor_sub = user_input.cursor_down(cursor_sub, entry_list, scr_dim, cursor_main)
+                else:
+                    find_list.append(-1)
+                    cursor_sub = user_input.cursor_down(cursor_sub, find_list, scr_dim, cursor_main)
+                    find_list.remove(-1)
+            elif open_window == 1 and cursor_main[2] == 2:
+                cursor_sub = user_input.cursor_down(cursor_sub, executions_list, scr_dim, cursor_main)
+            else:
+                cursor_sub = user_input.cursor_down(cursor_sub, open_list, scr_dim, cursor_main)
+        elif x == 259:
+            if open_window == 0:
+                cursor_main = user_input.cursor_up(cursor_main, open_list, scr_dim, cursor_sub)
+                cursor_sub = [0, 0, 0, 0]
+            elif open_window == 1 and cursor_main[2] == 1:
+                cursor_sub = user_input.cursor_up(cursor_sub, entry_list, scr_dim, cursor_main)
+            elif open_window == 1 and cursor_main[2] == 2:
+                cursor_sub = user_input.cursor_up(cursor_sub, entry_list, scr_dim, cursor_main)
+            else:
+                cursor_sub = user_input.cursor_up(cursor_sub, open_list, scr_dim, cursor_main)
+    elif x == 104:      # h
+        if current_screen == 1 and current_database != 0 and current_database != 1:
+            current_screen = 2
+        elif current_screen == 2:
+            current_screen = 1
+
+#terminating the window
+if current_database != 0 and current_database != 1:
+    database.close_databases(current_real_database, current_database, open_database, table_executions)
+term_scr(scr)
