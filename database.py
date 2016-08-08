@@ -28,8 +28,6 @@ def print_intro():
     print("Initializing...")
     time.sleep(2)
 
-
-
 def get_table(table_name, open_database):
     
     current_table = {table_name:{}}
@@ -133,6 +131,46 @@ def delete_execution(cursor_main, cursor_sub, shown_tables, current_table, table
     execution_to_remove = table_executions[str(shown_tables[cursor_main[0] + cursor_main[1] - 1])][execution_entry_position]
 
     table_executions[str(shown_tables[cursor_main[0] + cursor_main[1] - 1])].remove(str(execution_to_remove))
+
+    return table_executions
+
+def find_database_entry(cursor_main, cursor_sub, columns, shown_tables, current_table, scr_bottom, scr_dim):
+    
+    find_column = user_input.find_column_input(scr_bottom, scr_dim)
+    find_value = user_input.find_value_input(scr_bottom, scr_dim)
+
+    scr_bottom.clear()
+    scr_bottom.refresh()
+
+    column_found = 0
+    n = 0
+
+    for column in columns:
+        if str(find_column)[:-1] == str(column[1]):
+            column_found = 1
+            column_id = n
+        n = n + 1
+    if column_found == 0:
+        scr_bottom.addstr(1, 1, "Column not found...", curses.A_REVERSE)
+        scr_bottom.refresh()
+        time.sleep(2)
+        return []
+    
+    p = 0
+
+    find_list = []
+
+    for entry in current_table[shown_tables[cursor_main[0] + cursor_main[1] - 1]]:
+        if str(entry[column_id]) == str(find_value)[:-1]:
+            find_list.append(p)
+        p = p + 1
+
+    scr_bottom.addstr(1, 1, str(find_list))
+    scr_bottom.refresh()
+    time.sleep(1)
+    return find_list
+
+def new_execution(cursor_main, cursor_sub, table_executions):
 
     return table_executions
 

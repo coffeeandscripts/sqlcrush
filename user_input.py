@@ -94,3 +94,28 @@ def open_new_database(scr_top, scr_dim):
     new_database = new_database_box.edit()
 
     return new_database
+
+def find_column_input(scr_bottom, scr_dim):
+
+    new_find_column_window = curses.newwin(1, scr_dim[1] - 16, scr_dim[0] - 3, 16)
+    new_find_column_box = textpad.Textbox(new_find_column_window)
+    scr_bottom.addstr(0, 1, "Column:", curses.A_REVERSE)
+    scr_bottom.refresh()
+    new_find_column_window.refresh()
+    new_column_input = new_find_column_box.edit()
+
+    return new_column_input
+
+
+def find_value_input(scr_bottom, scr_dim):
+
+    new_find_value_window = curses.newwin(1, scr_dim[1] - 16, scr_dim[0] - 2, 14)
+    new_find_value_box = textpad.Textbox(new_find_value_window)
+    scr_bottom.addstr(1, 1, "Input:", curses.A_REVERSE)
+    scr_bottom.refresh()
+    new_find_value_window.refresh()
+    new_value_input = new_find_value_box.edit()
+
+    return new_value_input
+
+

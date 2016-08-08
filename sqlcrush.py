@@ -117,6 +117,7 @@ open_window = 0
 header_list = ["Struct", "Browse", "Execute"]
 
 help_screen = 0
+find_list = []
 
 table_executions = {}
 
@@ -151,7 +152,7 @@ while x != ord("0"):
 
     scr.refresh()
 
-    scr_top.addstr(0, 0, "SQLcrush v0.0.1 - coffeeandscripts")
+    scr_top.addstr(0, 0, "SQLcrush v0.0.1 - by coffeeandscripts")
     scr_top.addstr(0, 50, str(x))
 
     if current_database == 0:
@@ -281,11 +282,18 @@ while x != ord("0"):
                             n = n + 1
                     n = 0
                     p = 0
+                    find_counter = 0
                     entry_list = [0]
                     for entry in current_table[shown_tables[cursor_main[0] + cursor_main[1] - 1]]:
                         m = 0
                         q = 0
                         entry_list.append(entry[m])
+                        if find_list != []:
+                            if int(p) not in find_list:
+                                p = p + 1
+                                continue
+                            else:
+                                find_counter = find_counter + 1
                         if n >= scr_dim[0] - 10:
                             continue
                         if cursor_sub[1] >= p + 1:
@@ -299,7 +307,7 @@ while x != ord("0"):
                                 if len(str(entry[q])) >= 12:
                                     short_printing = str(entry[q])[0:9].replace('\n', ' ') + ".."
                                     full_printing = str(entry[q]).replace('\n', ' ')
-                                    if cursor_sub[0] + cursor_sub[1] == p + 2:
+                                    if (cursor_sub[0] + cursor_sub[1] == p + 2 and find_counter == 0) or cursor_sub[0] + cursor_sub[1] == find_counter + 1:
                                         if cursor_sub[2] == m+1 or cursor_sub[2] == 0:
                                             scr_show_main.addstr(n+2, 2+12*m, short_printing, curses.A_REVERSE)
                                             if cursor_sub[2] != 0:
@@ -320,7 +328,7 @@ while x != ord("0"):
                                     full_printing = str(entry[q]).replace('\n', ' ')
                                     while len(full_printing) < 11:
                                         full_printing = " " + full_printing
-                                    if cursor_sub[0] + cursor_sub[1] == p + 2:
+                                    if (cursor_sub[0] + cursor_sub[1] == p + 2 and find_counter == 0) or cursor_sub[0] + cursor_sub[1] == find_counter + 1:
                                         if cursor_sub[2] == m+1 or cursor_sub[2] == 0:
                                             scr_show_main.addstr(n+2, 2+12*m, full_printing, curses.A_REVERSE)
                                             if cursor_sub[2] != 0:
@@ -367,8 +375,14 @@ while x != ord("0"):
 
     scr_top.addstr(2, 1, str(cursor_main))
     scr_top.addstr(2, 30, str(cursor_sub))
+    if scr_dim[1] > 90:
+        scr_bottom.addstr(2, 2, "[h] Help [Arrows] Move [delete] Back [f] Find [n] New [u] Update [d] Delete [Esc/0] Exit", curses.A_REVERSE)
+    elif scr_dim[1] > 40:
+        scr_bottom.addstr(2, 2, "[h] Help [Arrows] Move [Esc/0] Exit", curses.A_REVERSE)
+    else:
+        scr_bottom.addstr(2, 2, "[h] Help [Esc/0] Exit", curses.A_REVERSE)
 
-    scr_bottom.addstr(2, 2, "[h] Help [Arrows] Move [0] Exit", curses.A_REVERSE)
+    scr_bottom.addstr(1, 1, str(find_list))
 
     refresh_windows(current_screen, scr_top, scr_front_main, scr_show_left, scr_show_main, scr_bottom)
 
@@ -381,6 +395,14 @@ while x != ord("0"):
     if x == 263 or x == 127:
         if open_window == 1:
             open_window = 0
+    if x == 102:        # f
+        if open_window == 1 and cursor_main[2] == 1:
+            if len(find_list) == 0:
+                find_list = database.find_database_entry(cursor_main, cursor_sub, columns, shown_tables, current_table, scr_bottom, scr_dim)
+                cursor_sub = [0, 0, 0, 0]
+            else:
+                find_list = []
+                cursor_sub = [0, 0, 0, 0]
     if x == 100:        # d
         if open_window == 1 and cursor_main[2] == 1 and cursor_sub[1] + cursor_sub[0] > 1 and cursor_sub[2] == 0:
             current_table = database.get_table(shown_tables[cursor_main[0] + cursor_main[1] - 1], open_database)
@@ -406,7 +428,9 @@ while x != ord("0"):
         if open_window == 1 and cursor_main[2] == 1 and cursor_sub[1] + cursor_sub[0] > 1 and cursor_sub[2] + cursor_sub[3] > 0:
             table_executions = database.update_database_cell(cursor_main, cursor_sub, columns, shown_tables, current_table, open_database, scr_bottom, scr_dim, table_executions)
 
-
+    if x == 110:        # n
+        if open_window == 1 and cursor_main[2] == 2:
+            table_executions = database.new_execution(cursor_main, cursor_sub, table_executions)
 
     if x == 261:
         if open_window == 1:
@@ -432,7 +456,12 @@ while x != ord("0"):
             cursor_main = user_input.cursor_down(cursor_main, open_list, scr_dim, cursor_sub)
             cursor_sub = [0, 0, 0, 0]
         elif open_window == 1 and cursor_main[2] == 1:
-            cursor_sub = user_input.cursor_down(cursor_sub, entry_list, scr_dim, cursor_main)
+            if find_list == []:
+                cursor_sub = user_input.cursor_down(cursor_sub, entry_list, scr_dim, cursor_main)
+            else:
+                find_list.append(-1)
+                cursor_sub = user_input.cursor_down(cursor_sub, find_list, scr_dim, cursor_main)
+                find_list.remove(-1)
         elif open_window == 1 and cursor_main[2] == 2:
             cursor_sub = user_input.cursor_down(cursor_sub, executions_list, scr_dim, cursor_main)
         else:
