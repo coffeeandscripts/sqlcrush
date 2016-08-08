@@ -348,6 +348,7 @@ while x != ord("0"):
                         p = p + 1
                     columns.append("Blank")
                 elif cursor_main[2] == 2:
+                    scr_show_main.addstr(1, 1, "New SQL execution:")
                     executions_list = table_executions[str(shown_tables[cursor_main[0] + cursor_main[1] - 1])]
                     n = 0
                     p = 0
@@ -430,7 +431,9 @@ while x != ord("0"):
 
     if x == 110:        # n
         if open_window == 1 and cursor_main[2] == 2:
-            table_executions = database.new_execution(cursor_main, cursor_sub, table_executions)
+            scr_show_main.addstr(1, 1, "New SQL execution:", curses.A_REVERSE)
+            scr_show_main.refresh()
+            table_executions = database.new_execution(cursor_main, cursor_sub, table_executions, scr_dim, open_database, scr_show_main, shown_tables)
 
     if x == 261:
         if open_window == 1:

@@ -97,7 +97,7 @@ def open_new_database(scr_top, scr_dim):
 
 def find_column_input(scr_bottom, scr_dim):
 
-    new_find_column_window = curses.newwin(1, scr_dim[1] - 16, scr_dim[0] - 3, 16)
+    new_find_column_window = curses.newwin(1, scr_dim[1] - 16, scr_dim[0] - 3, 14)
     new_find_column_box = textpad.Textbox(new_find_column_window)
     scr_bottom.addstr(0, 1, "Column:", curses.A_REVERSE)
     scr_bottom.refresh()
@@ -117,5 +117,15 @@ def find_value_input(scr_bottom, scr_dim):
     new_value_input = new_find_value_box.edit()
 
     return new_value_input
+
+def new_execution_input(scr_dim):
+    
+    new_execution_window = curses.newwin(1, scr_dim[1] - 28, 5, 40)
+    new_execution_box = textpad.Textbox(new_execution_window)
+    new_execution_window.refresh()
+    new_execution_input = new_execution_box.edit()
+
+    return new_execution_input
+
 
 

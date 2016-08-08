@@ -170,7 +170,18 @@ def find_database_entry(cursor_main, cursor_sub, columns, shown_tables, current_
     time.sleep(1)
     return find_list
 
-def new_execution(cursor_main, cursor_sub, table_executions):
+def new_execution(cursor_main, cursor_sub, table_executions, scr_dim, open_database, scr_show_main, shown_tables):
+
+    new_execution = user_input.new_execution_input(scr_dim)
+
+    try:
+        open_database.execute(new_execution)
+        open_database.commit()
+        table_executions[str(shown_tables[cursor_main[0] + cursor_main[1] - 1])].append(new_execution)
+    except:
+        scr_show_main.addstr(1, 1, "Execution failed...")
+        scr_show_main.refresh()
+        time.sleep(1)
 
     return table_executions
 
