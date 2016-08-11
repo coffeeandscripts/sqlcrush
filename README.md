@@ -8,7 +8,7 @@ Everyone knows that a picture says 1000 words which is demonstrated below:
 
 ## Features
 
- - Open up SQLite3/PostgreSQL/MySQL databased right from the console (UPDATE)
+ - Open up SQLite3/PostgreSQL/MySQL database right from the console (UPDATE)
  - Save the database and open it simply and quickly without typing the specs again (UPDATE
  - View each table and it's structure, browsing the content
  - Edit the content easily
