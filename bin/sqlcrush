@@ -69,16 +69,17 @@ def open_front_main(scr_dim):
         scr_front_main.addstr(3, 2, "Make sure to open the database from the command line")
         scr_front_main.addstr(4, 2, "e.g. sqlcrush -t sqlite -d demo.sqlite3")
         scr_front_main.addstr(5, 2, "e.g. sqlcrush -t postgres -d demo -u johnsmith -h localhost")
-        scr_front_main.addstr(6, 2, "[h] Toggle help window")
-        scr_front_main.addstr(7, 2, "[Arrows] Move around database")
-        scr_front_main.addstr(8, 2, "[<>] Move between headers for each table")
-        scr_front_main.addstr(9, 2, "[delete] Move back to table select")
-        scr_front_main.addstr(10, 2, "[f] Find in database")
-        scr_front_main.addstr(11, 2, "[n] New database entry or new execution")
-        scr_front_main.addstr(12, 2, "[u] Update database entry")
-        scr_front_main.addstr(13, 2, "[d] Delete database entry, cell or execution")
-        scr_front_main.addstr(14, 2, "[q] Quit")
-        scr_front_main.addstr(15, 2, "[s] Save database")
+        scr_front_main.addstr(5, 2, "e.g. sqlcrush -t mysql -d dev -u john -p pass -h devc -s /tmp/mysql.sock")
+        scr_front_main.addstr(7, 2, "[h] Toggle help window")
+        scr_front_main.addstr(8, 2, "[Arrows] Move around database")
+        scr_front_main.addstr(9, 2, "[<>] Move between headers for each table")
+        scr_front_main.addstr(10, 2, "[delete] Move back to table select")
+        scr_front_main.addstr(11, 2, "[f] Find in database")
+        scr_front_main.addstr(12, 2, "[n] New database entry or new execution")
+        scr_front_main.addstr(13, 2, "[u] Update database entry")
+        scr_front_main.addstr(14, 2, "[d] Delete database entry, cell or execution")
+        scr_front_main.addstr(15, 2, "[q] Quit")
+        scr_front_main.addstr(16, 2, "[s] Save database")
 
         if scr_dim[0] > 25:
             scr_front_main.addstr(18, 2, "Thank you for using SQLcrush. This was made to allow SQL")
@@ -120,6 +121,14 @@ def open_show_main(scr_dim):
 
     return scr_show_main
 
+def open_query_main(scr_dim):
+
+    scr_query_main = curses.newwin(scr_dim[0]-4-3, scr_dim[1], 4, 0)
+
+    scr_query_main.border(0)
+
+    return scr_query_main
+
 def open_bottom_bar(scr_dim):
 
     scr_bottom = curses.newwin(3, scr_dim[1], scr_dim[0]-3, 0)
@@ -127,7 +136,7 @@ def open_bottom_bar(scr_dim):
     return scr_bottom
 
 # refreshes each of the main windows
-def refresh_windows(current_screen, scr_top, scr_front_main, scr_show_left, scr_show_main, scr_bottom):
+def refresh_windows(current_screen, scr_top, scr_front_main, scr_show_left, scr_show_main, scr_bottom, scr_query_main):
 
     if current_screen == 1:
         scr_top.refresh()
@@ -136,6 +145,10 @@ def refresh_windows(current_screen, scr_top, scr_front_main, scr_show_left, scr_
         scr_top.refresh()
         scr_show_left.refresh()
         scr_show_main.refresh()
+        scr_bottom.refresh()
+    elif current_screen == 3:
+        scr_top.refresh()
+        scr_query_main.refresh()
         scr_bottom.refresh()
     else:
         scr_top.refresh()
@@ -178,12 +191,14 @@ open_window = 0
 header_list = ["Struct", "Browse", "Execute"]
 help_screen = 0
 find_list = []
+shown_tables = []
 table_executions = {}
 dbname = 0
 user = 0
 password = 0
 host = 0
 port = 0
+socket = 0
 database_type = 0
 saved_database = 0
 current_real_database = 0
@@ -195,33 +210,34 @@ if len(sys.argv) == 1:
     current_screen = 1
 elif len(sys.argv) >= 2:
     arguments = len(sys.argv)
-    try:
-        for n in range(arguments):
-            if sys.argv[n] == "-d":
-                dbname = sys.argv[n+1]
-                current_real_database = dbname
-                current_database = dbname
-            if sys.argv[n] == "-u":
-                user = sys.argv[n+1]
-            if sys.argv[n] == "-pd":
-                password = sys.argv[n+1]
-            if sys.argv[n] == "-h":
-                host = sys.argv[n+1]
-            if sys.argv[n] == "-p":
-                port = sys.argv[n+1]
-            if sys.argv[n] == "-o":
-                saved_database = sys.argv[n+1]
-            if sys.argv[n] == "-t":
-                database_type = sys.argv[n+1]
-                database_type = database_type.lower()
-                if database_type == "sqlite3":
-                    database_type = "sqlite"
-                if database_type == "postgres":
-                    database_type = "postgresql"
-                if database_type == "mariadb" or database_type == "maria":
-                    database_type = "mysql"
-    except:
-        pass
+    for n in range(arguments):
+        if sys.argv[n] == "-d":
+            dbname = sys.argv[n+1]
+            current_real_database = dbname
+            current_database = dbname
+        if sys.argv[n] == "-u":
+            user = sys.argv[n+1]
+        if sys.argv[n] == "-pd":
+            password = sys.argv[n+1]
+        if sys.argv[n] == "-h":
+            host = sys.argv[n+1]
+        if sys.argv[n] == "-p":
+            port = sys.argv[n+1]
+        if sys.argv[n] == "-o":
+            saved_database = sys.argv[n+1]
+        if sys.argv[n] == "-s":
+            socket = sys.argv[n+1]
+            if socket[0] != "/":
+                socket = "/" + socket
+        if sys.argv[n] == "-t":
+            database_type = sys.argv[n+1]
+            database_type = database_type.lower()
+            if database_type == "sqlite3":
+                database_type = "sqlite"
+            if database_type == "postgres":
+                database_type = "postgresql"
+            if database_type == "mariadb" or database_type == "maria":
+                database_type = "mysql"
 else:
     current_database = 0
     current_screen = 1
@@ -230,7 +246,7 @@ else:
 n = 0
 while n < 3:
     try:
-        open_database = database.connect_database(n, current_real_database, dbname, user, host, password, port, database_type, saved_database)
+        open_database = database.connect_database(n, current_real_database, dbname, user, host, password, port, socket, database_type, saved_database)
         if open_database == 0:
             current_screen = 1
             current_database = 0
@@ -238,26 +254,27 @@ while n < 3:
         else:
             current_screen = 2
             n = 3
+            current_database = dbname
+            if saved_database != 0:
+                root_path = os.path.expanduser("~")
+                f = open(root_path + "/.sqlcrush/saved_databases", "r")
             
-            root_path = os.path.expanduser("~")
-            f = open(root_path + "/.sqlcrush/saved_databases", "r")
-        
-            saved_dbs = f.readlines()
-            f.close()
-            length_save_name = len(saved_database)
+                saved_dbs = f.readlines()
+                f.close()
+                length_save_name = len(saved_database)
 
-            # if the user can open it, sets up the relevant info to be used
-            for line in saved_dbs:
-                if saved_database == line.split(" ")[0]:
-                    sql_connect = line.split(" ")[1]
+                # if the user can open it, sets up the relevant info to be used
+                for line in saved_dbs:
+                    if saved_database == line.split(" ")[0]:
+                        sql_connect = line.split(" ")[1]
 
-            database_type = sql_connect.split("//")[0][:-1]
-            current_database = sql_connect.split("/")[-1]
-            current_real_database = current_database
-            if len(sql_connect.split(" ") == 3):
-                database_dir = sql_connect.split(" ")[2]
-            else:
-                database_dir = 0
+                database_type = sql_connect.split("//")[0][:-1]
+                current_database = sql_connect.split("/")[-1]
+                current_real_database = current_database
+                if len(sql_connect.split(" ") == 3):
+                    database_dir = sql_connect.split(" ")[2]
+                else:
+                    database_dir = 0
     except:
         # tries to open database 3 times
         n = n + 1
@@ -281,10 +298,11 @@ while x != ord("q"):        # quit on [q]
     scr_show_left = open_show_left(scr_dim)
     scr_show_main = open_show_main(scr_dim)
     scr_bottom = open_bottom_bar(scr_dim)
+    scr_query_main = open_query_main(scr_dim)
 
     scr.refresh()
 
-    scr_top.addstr(0, 0, "SQLcrush v0.1.2 - by coffeeandscripts")
+    scr_top.addstr(0, 0, "SQLcrush v0.1.3 - by coffeeandscripts")
 
     if current_database == 0 or current_database == "0":
         scr_top.addstr(1, 0, "No open database")
@@ -305,7 +323,7 @@ while x != ord("q"):        # quit on [q]
             n = 0
             while n < 3:
                 try:
-                    open_database = database.connect_database(n, current_real_database, dbname, user, host, password, port, database_type, saved_database)
+                    open_database = database.connect_database(n, current_real_database, dbname, user, host, password, port, socket, database_type, saved_database)
                     n = 3
                 except:
                     n = n + 1
@@ -620,6 +638,36 @@ while x != ord("q"):        # quit on [q]
             # when a table hasn't been selected
             elif open_window == 0:
                 scr_show_main.addstr(2, 3, "Press ENTER to view/edit")
+    """
+    # query editor ????? SET CURSOR_SUB TO 0000
+    if current_screen == 3:
+        scr_query_main.addstr(1, 1, "Favourite Queries:", curses.A_REVERSE)
+        fav_queries = database_favourite_queries()
+
+        # lists the tables
+        n = 2
+        p = 0
+        for query in fav_queries:
+            if n - 2 >= scr_dim[0] - 10:
+                continue
+            if cursor_sub[1] >= p + 1:
+                p = p + 1
+                continue
+            if len(query) >= scr_dim[1]-2:
+                if cursor_sub[0] + cursor_sub[1] == p + 1:
+                    scr_query_main.addstr(n, 1, query[0:scr_dim[1]-6] + "...", curses.A_REVERSE)
+                else:
+                    scr_query_main.addstr(n, 1, query[0:scr_dim[1]-6] + "...")
+            else:
+                if cursor_sub[0] + cursor_sub[1] == p + 1:
+                    scr_query_main.addstr(n, 1, query, curses.A_REVERSE)
+                else:
+                    scr_query_main.addstr(n, 1, query)
+            n = n + 1
+            p = p + 1
+    """
+
+
 
     # sets the open_list that is passed to some functions
     if open_window == 0 and current_screen == 2:
@@ -637,7 +685,7 @@ while x != ord("q"):        # quit on [q]
     else:
         scr_bottom.addstr(2, 2, "[h] Help [q] Exit", curses.A_REVERSE)
 
-    refresh_windows(current_screen, scr_top, scr_front_main, scr_show_left, scr_show_main, scr_bottom)
+    refresh_windows(current_screen, scr_top, scr_front_main, scr_show_left, scr_show_main, scr_bottom, scr_query_main)
 
     # get the last key
     x = scr.getch()
@@ -650,7 +698,7 @@ while x != ord("q"):        # quit on [q]
                 open_window = 1
                 cursor_sub = [0, 0, 0, 0]
         # backspace
-        if x == 263 or x == 127:
+        if x == 263 or x == 127 or x == 27:
             if open_window == 1:
                 open_window = 0
         if x == 102:        # f

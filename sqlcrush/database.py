@@ -30,20 +30,27 @@ def print_intro():
     print("Initializing...")
     time.sleep(2)
 
-def connect_database(n, current_real_database, dbname, user, host, password, port, database_type, saved_database):
+def connect_database(n, current_real_database, dbname, user, host, password, port, socket, database_type, saved_database):
 
     database_dir = 0
 
     if saved_database == 0:
-        sql_connect = str(database_type) + "://"
+        if database_type == "mysql":
+            sql_connect = str(database_type) + "+pymysql://"
+        else:
+            sql_connect = str(database_type) + "://"
         if user != 0:
             sql_connect = sql_connect + user
         if password != 0:
             sql_connect = sql_connect + ":" + password
         if host != 0:
             sql_connect = sql_connect + "@" + host
+        if port != 0 and database_type != "mysql":
+            sql_connect = sql_connect + ":" + port
         if dbname != 0:
             sql_connect = sql_connect + "/" + dbname
+        if socket != 0 and database_type == "mysql":
+            sql_connect = sql_connect + "?unix_socket='" + socket + "'"
     else:
         root_path = os.path.expanduser("~")
         f = open(root_path + "/.sqlcrush/saved_databases", "r")

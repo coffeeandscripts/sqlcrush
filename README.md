@@ -1,4 +1,4 @@
-# **SQLcrush v0.1.2** - console based database editor
+# **SQLcrush v0.1.3** - console based database editor
 
 Build using python and ncurses, SQLcrush is dedicated to allowing you to access and edit a database directly from the console. Ideal when doing bugtesting and by SSH into the server itself. Simply run SQLcrush to view, edit and manipulate the database of your choice. Works with SQLite3, PostgreSQL and MariaDB/MySQL.
 
@@ -43,9 +43,10 @@ You can then save these setting in the app itself by pressing [s] and giving it 
 -t		**type of database (sqlite, postgresql, mysql)**
 -d		**database name**
 -h		host (e.g. localhost)
--p		port (usually defaults to 5432 so can be left out)
+-p		port (usually defaults to 5432 so can be left out for postgreSQL)
 -u		username
 -pd		password
+-s      socket (relevant for some MySQL servers)
 -o		open saved database (remember the name you saved it as)
 ~~~~
  - Bold means essential unless opening saved database
@@ -55,6 +56,8 @@ You can then save these setting in the app itself by pressing [s] and giving it 
 #### Dependencies
 
  - SQLalchemy
+ - psycopg2
+ - pymysql
  - curses (should be installed in standard library)
 
 There are multiple installation methods:
