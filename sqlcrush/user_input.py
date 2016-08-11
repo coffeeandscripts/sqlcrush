@@ -126,3 +126,27 @@ def new_execution_input(scr_dim):
     new_execution_input = new_execution_box.edit()
 
     return new_execution_input
+
+def add_new_row(column, scr_dim, scr_bottom):
+
+    new_row_window = curses.newwin(1, scr_dim[1]-16, scr_dim[0] - 3, 14)
+    new_row_box = textpad.Textbox(new_row_window)
+    new_row_window.refresh()
+    scr_bottom.clear()
+    scr_bottom.addstr(0, 1, str(column[1]), curses.A_REVERSE)
+    scr_bottom.addstr(1, 1, "Type: " + str(column[2]))
+    scr_bottom.refresh()
+    new_row_input = new_row_box.edit()
+
+    return new_row_input
+
+def save_database_name(scr_dim, scr_bottom):
+
+    new_save_window = curses.newwin(1, scr_dim[1]-10, scr_dim[0] - 3, 8)
+    new_save_box = textpad.Textbox(new_save_window)
+    new_save_window.refresh()
+    scr_bottom.addstr(0, 1, "Save:", curses.A_REVERSE)
+    scr_bottom.refresh()
+    new_save_input = new_save_box.edit()
+
+    return new_save_input

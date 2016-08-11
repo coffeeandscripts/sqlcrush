@@ -6,7 +6,8 @@ import time
 import sys
 import os
 import datetime
-import sqlite3
+from sqlalchemy import *
+from sqlalchemy.orm import *
 
 from sqlcrush import user_input
 
@@ -29,11 +30,75 @@ def print_intro():
     print("Initializing...")
     time.sleep(2)
 
-def get_table(table_name, open_database):
+def connect_database(n, current_real_database, dbname, user, host, password, port, database_type, saved_database):
+
+    database_dir = 0
+
+    if saved_database == 0:
+        sql_connect = str(database_type) + "://"
+        if user != 0:
+            sql_connect = sql_connect + user
+        if password != 0:
+            sql_connect = sql_connect + ":" + password
+        if host != 0:
+            sql_connect = sql_connect + "@" + host
+        if dbname != 0:
+            sql_connect = sql_connect + "/" + dbname
+    else:
+        root_path = os.path.expanduser("~")
+        f = open(root_path + "/.sqlcrush/saved_databases", "r")
+        
+        saved_dbs = f.readlines()
+        f.close()
+        length_save_name = len(saved_database)
+
+        for line in saved_dbs:
+            if saved_database == line.split(" ")[0]:
+                if len(line.split(" ")) == 2:
+                    sql_connect = line.split(" ")[1]
+                elif len(line.split(" ")) == 3:
+                    sql_connect = line.split(" ")[1]
+                    database_dir = line.split(" ")[2]
+    try:
+        if database_dir != 0:
+            os.chdir(database_dir)
+        open_database = create_engine(sql_connect)
+    except:
+        open_database = 0
+
+    return open_database
+
+def save_database_to_file(dbname, user, host, password, port, database_type, scr_dim, scr_bottom):
+
+    root_path = os.path.expanduser("~")
+
+    save_input = user_input.save_database_name(scr_dim, scr_bottom)
+
+    database_save = "\n" + save_input[0:-1] + " " + str(database_type) + "://"
+    if user != 0:
+        database_save = database_save + user
+    if password != 0:
+        database_save = database_save + ":" + password
+    if host != 0:
+        database_save = database_save + "@" + host
+    if dbname != 0:
+        database_save = database_save + "/" + dbname
+
+    if database_type == "sqlite":
+        current_dir = os.getcwd()
+        database_save = database_save + " " + current_dir
+
+    with open(root_path + "/.sqlcrush/saved_databases", "a") as f:
+        f.write(database_save)
+
+def get_table(table_name, open_database, database_dir):
+
+    if database_dir != 0:
+        os.chidir(database_dir)
 
     current_table = {table_name:{}}
-
-    current_table[table_name] = open_database.execute('SELECT * FROM %s' % table_name).fetchall()
+    with open_database.connect() as conn:
+        current_table[table_name] = conn.execute('SELECT * FROM %s' % table_name).fetchall()
 
     return current_table
 
@@ -61,12 +126,19 @@ def delete_database_entry(cursor_main, cursor_sub, columns, shown_tables, curren
     scr_bottom.refresh()
 
     time.sleep(1)
+    
+    try:
+        Session = sessionmaker(bind=open_database)
+        conn = Session()
+        conn.execute(sql_command)
+        conn.commit()
+        table_executions[str(shown_tables[cursor_main[0] + cursor_main[1] - 1])].append(sql_command)
 
-    open_database.execute(sql_command)
-
-    open_database.commit()
-
-    table_executions[str(shown_tables[cursor_main[0] + cursor_main[1] - 1])].append(sql_command)
+    except:
+        scr_bottom.clear()
+        scr_bottom.addstr(1, 1, "Delete failed")
+        scr_bottom.refresh()
+        time.sleep(1)
 
     return table_executions
 
@@ -97,8 +169,10 @@ def delete_database_cell(cursor_main, cursor_sub, columns, shown_tables, current
     time.sleep(1)
 
     try:
-        open_database.execute(sql_command)
-        open_database.commit()
+        Session = sessionmaker(bind=open_database)
+        conn = Session()
+        conn.execute(sql_command)
+        conn.commit()
         table_executions[str(shown_tables[cursor_main[0] + cursor_main[1] - 1])].append(str(sql_command))
     except:
         scr_bottom.clear()
@@ -133,18 +207,21 @@ def update_database_cell(cursor_main, cursor_sub, columns, shown_tables, current
     if str(user_input) != " " and str(user_input) != "\n" and str(user_input) != "":
         sql_command = "UPDATE " + str(shown_tables[cursor_main[0] + cursor_main[1] - 1]) + " SET " + str(columns[cursor_sub[2] + cursor_sub[3] - 1][1]) + " = '" + str(new_entry)[:-1] + "' WHERE " + str(current_entry_primary_key_name) + "=" + str(current_entry_primary_key_id)
 
-        scr_bottom.addstr(1, 1, str(sql_command))
+    scr_bottom.addstr(1, 1, str(sql_command))
 
     try:
-        open_database.execute(sql_command)
-        open_database.commit()
+        Session = sessionmaker(bind=open_database)
+        conn = Session()
+        conn.execute(sql_command)
+        conn.commit()
+
         table_executions[str(shown_tables[cursor_main[0] + cursor_main[1] - 1])].append(str(sql_command))
+
     except:
         scr_bottom.clear()
-        scr_bottom.addstr(1, 1, "Delete failed")
+        scr_bottom.addstr(1, 1, "Update failed")
         scr_bottom.refresh()
         time.sleep(1)
-
 
     return table_executions
 
@@ -212,17 +289,22 @@ def find_database_entry(cursor_main, cursor_sub, columns, shown_tables, current_
 
     return find_list
 
-def new_execution(cursor_main, cursor_sub, table_executions, scr_dim, open_database, scr_show_main, shown_tables):
+def new_execution(cursor_main, cursor_sub, table_executions, scr_dim, open_database, scr_show_main, shown_tables, scr_bottom):
 
     new_execution = user_input.new_execution_input(scr_dim)
 
     try:
-        open_database.execute(new_execution)
-        open_database.commit()
-        table_executions[str(shown_tables[cursor_main[0] + cursor_main[1] - 1])].append(new_execution)
+        Session = sessionmaker(bind=open_database)
+        conn = Session()
+        conn.execute(new_execution)
+        conn.commit()
+
+        table_executions[str(shown_tables[cursor_main[0] + cursor_main[1] - 1])].append(str(new_execution))
+
     except:
-        scr_show_main.addstr(1, 1, "Execution failed...")
-        scr_show_main.refresh()
+        scr_bottom.clear()
+        scr_bottom.addstr(1, 1, "Execution failed")
+        scr_bottom.refresh()
         time.sleep(1)
 
     return table_executions
@@ -237,10 +319,16 @@ def new_entry(cursor_main, cursor_sub, table_executions, scr_dim, open_database,
     for column in columns:
         if n < n_max - 1:
             n = n + 1
-            if column[3] == 0 or column[5] == 1:
-                empty_values = empty_values + "NULL, "
+            if column[5] == 1 or str(column[5]) == "True":
+                new_input = "DEFAULT"
             else:
-                empty_values = empty_values + "'-----', "
+                new_input = user_input.add_new_row(column, scr_dim, scr_bottom)
+            if new_input == "DEFAULT":
+                empty_values = empty_values + new_input + ", "
+            elif str(new_input)[:-1] == "now":
+                    empty_values = empty_values + "'" + str(datetime.datetime.now()) + "', "
+            else:
+                empty_values = empty_values + "'" + str(new_input)[:-1] + "', "
 
     empty_values = empty_values[:-2] + ")"
 
@@ -251,35 +339,39 @@ def new_entry(cursor_main, cursor_sub, table_executions, scr_dim, open_database,
     scr_bottom.refresh()
 
     time.sleep(1)
-    #try:
-    open_database.execute(sql_command)
 
-    open_database.commit()
+    try:
+        Session = sessionmaker(bind=open_database)
+        conn = Session()
+        conn.execute(sql_command)
+        conn.commit()
 
-    table_executions[str(shown_tables[cursor_main[0] + cursor_main[1] - 1])].append(sql_command)
-    """
+        table_executions[str(shown_tables[cursor_main[0] + cursor_main[1] - 1])].append(str(sql_command))
+
     except:
         scr_bottom.clear()
         scr_bottom.addstr(1, 1, "New entry failed")
         scr_bottom.refresh()
         time.sleep(1)
-    """
+   
     return table_executions
 
 
-def close_databases(current_real_database, current_database, open_database, table_executions):
+def close_databases(current_real_database, current_database, open_database, table_executions, database_type):
 
     open_database.close()
 
-    real_database = sqlite3.connect(str(current_real_database))
+    if database_type == "SQLite3":
 
-    for table in table_executions:
-        for execution in table_executions[table]:
-            try:
-                real_database.execute(execution)
-                real_database.commit()
-            except:
-                pass
+        real_database = sqlite3.connect(str(current_real_database))
+
+        for table in table_executions:
+            for execution in table_executions[table]:
+                try:
+                    real_database.execute(execution)
+                    real_database.commit()
+                except:
+                    pass
 
     real_database.close()
 

@@ -1,0 +1,6 @@
+# SQLcrush saved databases
+# Edit manually or save opened database via the app
+# Format:
+# db_short_name database_type:///username:password@host/dbname current_working_directory (for sqlite3)
+# e.g. dev postgresql://johnsmith:test123@localhost/dev_db
+# e.g. devtest sqlite:///devtest.db /home/johnsmith/dbfiles/test1

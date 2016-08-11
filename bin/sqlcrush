@@ -5,7 +5,7 @@ import curses
 import time
 import sys
 import os
-import sqlite3
+from sqlalchemy import *
 
 import sqlcrush
 from sqlcrush import database
@@ -67,7 +67,8 @@ def open_front_main(scr_dim):
     if scr_dim[1] > 64:
         scr_front_main.addstr(2, 2, "HELP:")
         scr_front_main.addstr(3, 2, "Make sure to open the database from the command line")
-        scr_front_main.addstr(4, 2, "e.g. sqlcrush demo.sqlite3")
+        scr_front_main.addstr(4, 2, "e.g. sqlcrush -t sqlite -d demo.sqlite3")
+        scr_front_main.addstr(5, 2, "e.g. sqlcrush -t postgres -d demo -u johnsmith -h localhost")
         scr_front_main.addstr(6, 2, "[h] Toggle help window")
         scr_front_main.addstr(7, 2, "[Arrows] Move around database")
         scr_front_main.addstr(8, 2, "[<>] Move between headers for each table")
@@ -77,13 +78,12 @@ def open_front_main(scr_dim):
         scr_front_main.addstr(12, 2, "[u] Update database entry")
         scr_front_main.addstr(13, 2, "[d] Delete database entry, cell or execution")
         scr_front_main.addstr(14, 2, "[q] Quit")
-        scr_front_main.addstr(16, 2, "Make sure to use q to quit otherwise changes won't save")
+        scr_front_main.addstr(15, 2, "[s] Save database")
 
         if scr_dim[0] > 25:
             scr_front_main.addstr(18, 2, "Thank you for using SQLcrush. This was made to allow SQL")
             scr_front_main.addstr(19, 2, "database manipulation to be done right in the console.")
-            scr_front_main.addstr(20, 2, "Feel free to hack with care. No changes are made to actual")
-            scr_front_main.addstr(21, 2, "database until SQLcrush is quit.")
+            scr_front_main.addstr(20, 2, "Feel free to hack with care.")
 
     else:
         scr_front_main.addstr(2, 2, "HELP:")
@@ -98,7 +98,7 @@ def open_front_main(scr_dim):
         scr_front_main.addstr(12, 2, "[u] Update database entry")
         scr_front_main.addstr(13, 2, "[d] Delete database entry, cell or execution")
         scr_front_main.addstr(14, 2, "[q] Quit")
-        scr_front_main.addstr(16, 2, "Save by quitting")
+        scr_front_main.addstr(15, 2, "[s] Save database")
 
     scr_front_main.border(0)
 
@@ -126,6 +126,7 @@ def open_bottom_bar(scr_dim):
 
     return scr_bottom
 
+# refreshes each of the main windows
 def refresh_windows(current_screen, scr_top, scr_front_main, scr_show_left, scr_show_main, scr_bottom):
 
     if current_screen == 1:
@@ -139,54 +140,140 @@ def refresh_windows(current_screen, scr_top, scr_front_main, scr_show_left, scr_
     else:
         scr_top.refresh()
 
+# sets up .sqlcrush folder
+def create_environment():
+
+    root_path = os.path.expanduser("~")
+
+    if not os.path.exists(root_path + "/.sqlcrush"):
+        try:
+            os.makedirs(root_path + "/.sqlcrush", exist_ok=True)
+        except:
+            os.makedirs(root_path + "/.sqlcrush")
+        try:
+            os.system("cp " + os.path.dirname(sqlcrush.__file__) + "/saved_databases " + root_path + "/.sqlcrush/saved_databases")
+        except:
+            pass
+
+    if not os.path.isfile(root_path + "/.sqlcrush/saved_databases"):
+        try:
+            os.system("cp " + os.getcwd() + "/sqlcrush/saved_databases " + root_path + "/.sqlcrush/saved_databases")
+        except:
+            f = open(root_path + "/.sqlcrush/saved_databases", "a")
+            auto_content = "# SQLcrush saved databases\n# Edit manually or save opened database via the app\n# Format:\n# db_short_name database_type:///username:password@host/dbname current_working_directory (for sqlite3)\n# e.g. dev postgresql://johnsmith:test123@localhost/dev_db\n# e.g. devtest sqlite:///devtest.db /home/johnsmith/dbfiles/test1"
+            f.write(auto_content)
+            f.close()
+
 ## WORKFLOW ##
+create_environment()
 database.print_intro()
 
 scr = init_scr()
 scr_dim = get_scr_dim(scr)
 
+# declarations
 cursor_main = [0, 0, 0, 0]
 cursor_sub = [0, 0, 0, 0]
 open_window = 0
-
 header_list = ["Struct", "Browse", "Execute"]
-
 help_screen = 0
 find_list = []
-
 table_executions = {}
+dbname = 0
+user = 0
+password = 0
+host = 0
+port = 0
+database_type = 0
+saved_database = 0
+current_real_database = 0
+database_dir = 0
 
+# Based on what the user inputs
 if len(sys.argv) == 1:
     current_database = 0
     current_screen = 1
-elif len(sys.argv) == 2:
-    current_real_database = sys.argv[1]
-    current_database = ".temp_" + current_real_database
-    if os.path.isfile(current_database):
-        os.system("rm " + current_database)
-    current_screen = 2
-    os.system("cp " + current_real_database + " " + current_database)
+elif len(sys.argv) >= 2:
+    arguments = len(sys.argv)
+    try:
+        for n in range(arguments):
+            if sys.argv[n] == "-d":
+                dbname = sys.argv[n+1]
+                current_real_database = dbname
+                current_database = dbname
+            if sys.argv[n] == "-u":
+                user = sys.argv[n+1]
+            if sys.argv[n] == "-pd":
+                password = sys.argv[n+1]
+            if sys.argv[n] == "-h":
+                host = sys.argv[n+1]
+            if sys.argv[n] == "-p":
+                port = sys.argv[n+1]
+            if sys.argv[n] == "-o":
+                saved_database = sys.argv[n+1]
+            if sys.argv[n] == "-t":
+                database_type = sys.argv[n+1]
+                database_type = database_type.lower()
+                if database_type == "sqlite3":
+                    database_type = "sqlite"
+                if database_type == "postgres":
+                    database_type = "postgresql"
+                if database_type == "mariadb" or database_type == "maria":
+                    database_type = "mysql"
+    except:
+        pass
 else:
-    current_database = 1
+    current_database = 0
     current_screen = 1
 
-try:
-    if current_database != 0:
-        open_database = sqlite3.connect(str(current_database))
-except:
-    current_database == 0
+# attempts to open the database
+n = 0
+while n < 3:
+    try:
+        open_database = database.connect_database(n, current_real_database, dbname, user, host, password, port, database_type, saved_database)
+        if open_database == 0:
+            current_screen = 1
+            current_database = 0
+            n = 3
+        else:
+            current_screen = 2
+            n = 3
+            
+            root_path = os.path.expanduser("~")
+            f = open(root_path + "/.sqlcrush/saved_databases", "r")
+        
+            saved_dbs = f.readlines()
+            f.close()
+            length_save_name = len(saved_database)
 
+            # if the user can open it, sets up the relevant info to be used
+            for line in saved_dbs:
+                if saved_database == line.split(" ")[0]:
+                    sql_connect = line.split(" ")[1]
+
+            database_type = sql_connect.split("//")[0][:-1]
+            current_database = sql_connect.split("/")[-1]
+            current_real_database = current_database
+            if len(sql_connect.split(" ") == 3):
+                database_dir = sql_connect.split(" ")[2]
+            else:
+                database_dir = 0
+    except:
+        # tries to open database 3 times
+        n = n + 1
+        if n == 3:
+            current_screen = 1
+            current_database = 0
 #main loop
-while x != ord("q"):
+while x != ord("q"):        # quit on [q]
 
+    # check to see if there is a change in terminal size
     term_size_change = check_term_size_change(scr, scr_dim)
-
     if term_size_change == True:
         term_scr(scr)
         scr = init_scr()
         scr_dim = get_scr_dim(scr)
         term_size_change == False
-
     scr_dim = get_scr_dim(scr)
 
     scr_top = open_top_bar(scr_dim)
@@ -197,12 +284,14 @@ while x != ord("q"):
 
     scr.refresh()
 
-    scr_top.addstr(0, 0, "SQLcrush v0.1.1 - by coffeeandscripts")
+    scr_top.addstr(0, 0, "SQLcrush v0.1.2 - by coffeeandscripts")
 
     if current_database == 0 or current_database == "0":
         scr_top.addstr(1, 0, "No open database")
     else:
-        scr_top.addstr(1, 0, str(current_real_database))
+        scr_top.addstr(1, 0, str(database_type) + " - " + str(current_real_database))
+        
+        # for each of the tables, adds up the number of executions
         execution_length = 0
         for table in table_executions:
             for execution in table_executions[table]:
@@ -212,22 +301,30 @@ while x != ord("q"):
 
         if current_database != 0 and current_database != 1:
 
-            try:
-                open_database = sqlite3.connect(str(current_database))
-            except:
-                term_scr(scr)
-                print("Critical failure")
-                time.sleep(1)
-                sys.exit()
+            # tries to open the database again 3 times max
+            n = 0
+            while n < 3:
+                try:
+                    open_database = database.connect_database(n, current_real_database, dbname, user, host, password, port, database_type, saved_database)
+                    n = 3
+                except:
+                    n = n + 1
+                    if n == 3:
+                        #if there is a failure, it exits quickly after closing ncurses
+                        term_scr(scr)
+                        print("Critical failure")
+                        time.sleep(1)
+                        sys.exit()
 
-
-
-            if x == 9:
+            # use [enter] to switch windows
+            if x == 9:          # [enter]
                 if open_window == 0:
                     open_window = 1
                 else:
                     open_window = 0
             scr_show_left.addstr(0, 2, str(current_real_database)[0:12], curses.A_REVERSE)
+
+            # when window 1 is open, lists the headers
             n = 0
             for header in header_list:
                 if open_window == 1:
@@ -238,37 +335,71 @@ while x != ord("q"):
                 else:
                     scr_show_main.addstr(0, 2+n*8, str(header))
                 n = n + 1
-            all_tables = open_database.execute("SELECT name FROM sqlite_master WHERE type='table'")
+            
+            # get the table MetaData from SQLalchemy
+            all_tables = MetaData()
+            all_tables.reflect(open_database)
+
+            # lists the tables
             n = 2
             p = 0
             shown_tables = []
-            for table in all_tables:
-                shown_tables.append(str(table)[2:-3])
-                if str(table)[2:-3] not in table_executions:
-                    table_executions[str(table)[2:-3]] = []
+            for table in all_tables.tables.values():
+                shown_tables.append(table.name)
+                table_print = table.name
+                if table_print not in table_executions:
+                    table_executions[table_print] = []
                 if n - 2 >= scr_dim[0] - 10:
                     continue
                 if cursor_main[1] >= p + 1:
                     p = p + 1
                     continue
-                if len(str(table)) > 16:
+                if len(str(table_print)) >= 15:
                     if cursor_main[0] + cursor_main[1] == p + 1:
-                        scr_show_left.addstr(n, 1, str(table)[2:13] + "...", curses.A_REVERSE)
+                        scr_show_left.addstr(n, 1, table_print[0:11] + "...", curses.A_REVERSE)
                     else:
-                        scr_show_left.addstr(n, 1, str(table)[2:13] + "...")
+                        scr_show_left.addstr(n, 1, table_print[0:11] + "...")
                 else:
                     if cursor_main[0] + cursor_main[1] == p + 1:
-                        scr_show_left.addstr(n, 1, str(table)[2:-3], curses.A_REVERSE)
+                        scr_show_left.addstr(n, 1, table_print, curses.A_REVERSE)
                     else:
-                        scr_show_left.addstr(n, 1, str(table)[2:-3])
+                        scr_show_left.addstr(n, 1, table_print)
                 n = n + 1
                 p = p + 1
 
+            # lists the columns for the selected table
             if open_window == 1:
-                open_table = shown_tables[cursor_main[0] + cursor_main[1] - 1]
+                # set the open table based on cursor_main
+                table_inspector = inspect(open_database)
+                open_table = table_inspector.get_columns(shown_tables[cursor_main[0] + cursor_main[1] - 1])
+                n = 0
+                pk = 0
+                columns = []
+                for c in open_table:
+                    column = []
+                    column.append(n)
+                    column.append(c['name'])
+                    column.append(c['type'])
+                    column.append(c['nullable'])
+                    column.append(c['default'])
+                    # sometimes primary_key doesn't come up and so the first column will be assigned as pk
+                    try:
+                        column.append(c['primary_key'])
+                    except:
+                        if pk == 0:
+                            column.append(1)
+                            pk = 1
+                        else:
+                            column.append(0)
+                    # currently not used but could be relevant in future
+                    try:
+                        column.append(c['foreign_key'])
+                    except:
+                        column.append(0)
+                    columns.append(column)
+                    n = n + 1
 
-                columns = open_database.execute('PRAGMA TABLE_INFO({})'.format(shown_tables[cursor_main[0] + cursor_main[1] - 1])).fetchall()
-
+                # organise the presentation for the headers of the columns
                 if cursor_main[2] == 0:
                     if scr_dim[1] > 12 + 6:
                         scr_show_main.addstr(1, 2, "ID:")
@@ -282,12 +413,15 @@ while x != ord("q"):
                         scr_show_main.addstr(1, 52, "Default:")
                     n = 0
                     p = 0
+
+                    # printing of the columns based on scr_dim and cursor_sub
                     for column in columns:
                         if n >= scr_dim[0] - 10:
                             continue
                         if cursor_sub[1] >= p + 1:
                             p = p + 1
                             continue
+                        # sets the printing length based on width of columns
                         id_print = str(column[0]) + " "
                         name_print = str(column[1]) + " "
                         if len(name_print) >= 24:
@@ -302,8 +436,8 @@ while x != ord("q"):
                             notnull_print = notnull_print[0:6] + ".."
 
                         default_print = str(column[4]) + " "
-                        if len(default_print) >= 12:
-                            default_print = default_print[0:8] + ".."
+                        if len(default_print) >= 11:
+                            default_print = default_print[0:7] + ".."
 
                         while len(id_print) < 3:
                             id_print = " " + id_print
@@ -328,7 +462,7 @@ while x != ord("q"):
                             if scr_dim[1] > 12 + 64:
                                 scr_show_main.addstr(2+n, 52, default_print, curses.A_REVERSE)
                         else:
-                            if column[5] == 1:
+                            if column[5] == 1 or column[5] == True:
                                 if scr_dim[1] > 12 + 6:
                                     scr_show_main.addstr(2+n, 3, id_print, curses.A_BLINK)
                                 if scr_dim[1] > 12 + 30:
@@ -352,12 +486,16 @@ while x != ord("q"):
                                     scr_show_main.addstr(2+n, 52, default_print)
                         n = n + 1
                         p = p + 1
-                elif cursor_main[2] == 1:
 
-                    current_table = database.get_table(shown_tables[cursor_main[0] + cursor_main[1] - 1], open_database)
+                # printing of the table in the browser
+                elif cursor_main[2] == 1:
+                    # get a large dictionary where key is the selected table and list of lists
+                    current_table = database.get_table(shown_tables[cursor_main[0] + cursor_main[1] - 1], open_database, database_dir)
                     n = 0
                     m = 0
+                    # printing the column titles
                     for column in columns:
+                        # checks cursor_sub for the horizontal position
                         if cursor_sub[3] >= m + 1:
                             m = m + 1
                             continue
@@ -387,22 +525,27 @@ while x != ord("q"):
                     p = 0
                     find_counter = 0
                     entry_list = [0]
+                    # printing the table itself
                     for entry in current_table[shown_tables[cursor_main[0] + cursor_main[1] - 1]]:
                         m = 0
                         q = 0
                         entry_list.append(entry[m])
+                        # check if a find query has been made and if not empty, skips entry if not in list
                         if find_list != []:
                             if int(p) not in find_list:
                                 p = p + 1
                                 continue
                             else:
                                 find_counter = find_counter + 1
+                        # limits number shown based on scr_dim
                         if n >= scr_dim[0] - 10:
                             continue
+                        # limits what is shown based on cursor_sub vertically
                         if cursor_sub[1] >= p + 1:
                             p = p + 1
                             continue
                         for column in columns:
+                            # limits what is shown based on cursor_sub horizontally
                             if cursor_sub[3] >= q + 1:
                                 q = q + 1
                                 continue
@@ -449,12 +592,14 @@ while x != ord("q"):
                                 q = q + 1
                         n = n + 1
                         p = p + 1
-                    columns.append("Blank")
+                    columns.append("Blank")     # added to make room for counting
+                # showing the executions on the specific table
                 elif cursor_main[2] == 2:
                     scr_show_main.addstr(1, 1, "New SQL execution:")
                     executions_list = table_executions[str(shown_tables[cursor_main[0] + cursor_main[1] - 1])]
                     n = 0
                     p = 0
+                    # present the executions that have been made in reverse order
                     for execution in reversed(executions_list):
                         if len(execution) > scr_dim[1] - 18:
                             execution_print = execution[0:scr_dim[1]-21] + ".."
@@ -467,14 +612,16 @@ while x != ord("q"):
                             continue
                         if cursor_sub[0] + cursor_sub[1] == p + 1:
                             scr_show_main.addstr(n+2, 1, str(execution_print), curses.A_REVERSE)
-                            scr_bottom.addstr(1, 1, str(execution)[0:scr_dim[1] - 2])
+                            scr_bottom.addstr(0, 1, str(execution)[0:scr_dim[1] - 2])
                         else:
                             scr_show_main.addstr(n+2, 1, str(execution_print))
                         n = n + 1
                         p = p + 1
+            # when a table hasn't been selected
             elif open_window == 0:
                 scr_show_main.addstr(2, 3, "Press ENTER to view/edit")
 
+    # sets the open_list that is passed to some functions
     if open_window == 0 and current_screen == 2:
         open_list = shown_tables
     elif open_window == 1 and current_screen == 2:
@@ -482,6 +629,7 @@ while x != ord("q"):
     else:
         pass
 
+    # prints the help on the bottom of the screen based on scr_dim
     if scr_dim[1] > 90:
         scr_bottom.addstr(2, 2, "[h] Help [Arrows/<>] Move [delete] Back [f] Find [n] New [u] Update [d] Delete [q] Exit", curses.A_REVERSE)
     elif scr_dim[1] > 40:
@@ -491,13 +639,17 @@ while x != ord("q"):
 
     refresh_windows(current_screen, scr_top, scr_front_main, scr_show_left, scr_show_main, scr_bottom)
 
+    # get the last key
     x = scr.getch()
 
+    # following only occure if the screen shown is table view
     if current_screen != 1:
+        # enter
         if x == 10:
             if open_window == 0 and cursor_main[0] > 0:
                 open_window = 1
                 cursor_sub = [0, 0, 0, 0]
+        # backspace
         if x == 263 or x == 127:
             if open_window == 1:
                 open_window = 0
@@ -511,7 +663,7 @@ while x != ord("q"):
                     cursor_sub = [0, 0, 0, 0]
         if x == 100:        # d
             if open_window == 1 and cursor_main[2] == 1 and cursor_sub[1] + cursor_sub[0] > 1 and cursor_sub[2] == 0:
-                current_table = database.get_table(shown_tables[cursor_main[0] + cursor_main[1] - 1], open_database)
+                current_table = database.get_table(shown_tables[cursor_main[0] + cursor_main[1] - 1], open_database, database_dir)
                 table_executions = database.delete_database_entry(cursor_main, cursor_sub, columns, shown_tables, current_table, open_database, scr_bottom, table_executions, current_real_database, current_database, find_list)
 
                 if find_list != []:
@@ -532,7 +684,7 @@ while x != ord("q"):
 
             if open_window == 1 and cursor_main[2] == 1 and cursor_sub[1] + cursor_sub[0] > 1 and cursor_sub[2] + cursor_sub[3] > 0:
                 table_executions = database.delete_database_cell(cursor_main, cursor_sub, columns, shown_tables, current_table, open_database, scr_bottom, table_executions, find_list)
-            if open_window == 1 and cursor_main[2] == 2 and cursor_sub[1] + cursor_sub[0] > 0:
+            if open_window == 1 and cursor_main[2] == 2 and cursor_sub[1] + cursor_sub[0] > 0 and database_type == "SQLite3":
                 table_executions = database.delete_execution(cursor_main, cursor_sub, shown_tables, current_table, table_executions, current_real_database, current_database, open_database)
                 if cursor_sub[0] > 1:
                     cursor_sub[0] = cursor_sub[0] - 1
@@ -550,7 +702,7 @@ while x != ord("q"):
             if open_window == 1 and cursor_main[2] == 2:
                 scr_show_main.addstr(1, 1, "New SQL execution:", curses.A_REVERSE)
                 scr_show_main.refresh()
-                table_executions = database.new_execution(cursor_main, cursor_sub, table_executions, scr_dim, open_database, scr_show_main, shown_tables)
+                table_executions = database.new_execution(cursor_main, cursor_sub, table_executions, scr_dim, open_database, scr_show_main, shown_tables, scr_bottom)
             if open_window == 1 and cursor_main[2] == 1:
                 table_executions = database.new_entry(cursor_main, cursor_sub, table_executions, scr_dim, open_database, scr_bottom, shown_tables, columns)
         if x == 261:
@@ -606,6 +758,15 @@ while x != ord("q"):
                 cursor_sub = user_input.cursor_up(cursor_sub, entry_list, scr_dim, cursor_main)
             else:
                 cursor_sub = user_input.cursor_up(cursor_sub, open_list, scr_dim, cursor_main)
+        elif x == 115:         # s
+            if saved_database == 0 and current_database != 0:
+                database.save_database_to_file(dbname, user, host, password, port, database_type, scr_dim, scr_bottom)
+        elif x == 104:      # h
+            if current_screen == 1 and current_database != 0 and current_database != 1:
+                current_screen = 2
+            elif current_screen == 2:
+                current_screen = 1
+
     elif x == 104:      # h
         if current_screen == 1 and current_database != 0 and current_database != 1:
             current_screen = 2
@@ -613,6 +774,4 @@ while x != ord("q"):
             current_screen = 1
 
 #terminating the window
-if current_database != 0 and current_database != 1:
-    database.close_databases(current_real_database, current_database, open_database, table_executions)
 term_scr(scr)

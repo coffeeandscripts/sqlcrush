@@ -1,6 +1,6 @@
-# **SQLcrush v0.1.1** - console based database editor
+# **SQLcrush v0.1.2** - console based database editor
 
-Build using python and ncurses, SQLcrush is dedicated to allowing you to access and edit a database directly from the console. Ideal when doing bugtesting and by SSH into the server itself. Simply run SQLcrush to view, edit and manipulate the database of your choice. Currently runs for SQLite3 but more features will be coming shortly.
+Build using python and ncurses, SQLcrush is dedicated to allowing you to access and edit a database directly from the console. Ideal when doing bugtesting and by SSH into the server itself. Simply run SQLcrush to view, edit and manipulate the database of your choice. Works with SQLite3, PostgreSQL and MariaDB/MySQL.
 
 Everyone knows that a picture says 1000 words which is demonstrated below:
 
@@ -8,30 +8,64 @@ Everyone knows that a picture says 1000 words which is demonstrated below:
 
 ## Features
 
- - Open up SQLite3 databased right from the console
+ - Open up SQLite3/PostgreSQL/MySQL databased right from the console
+ - Save the database and open it simply and quickly without typing the specs again
  - View each table and it's structure, browsing the content
  - Edit the content easily
- - Go back on any changes by controlling the executions that have been made
- - The database is always safe until a saved exit where changes will be applied
  - Add and delete entries
  - Track all changes
+
+## Additions Coming Soon
+
+ - Rollback on changes easily at any point in the project
+ - Query editor with REPL
+
+## Usage
+
+To open a file, make sure to do the following:
+
+~~~~
+SQLite3
+> cd 'path of file'						#for saved databases
+> sqlcrush -t sqlite -d test.db
+
+PostgreSQL/MySQL
+> sqlcrush -t postgresql -d test -u johnsmith -h localhost
+~~~~
+
+You can then save these setting in the app itself by pressing [s] and giving it a name which can then be pulled up again without having to cd into the direcotry (for SQLite3) by entering:
+
+~~~~
+> sqlcrush -o testdb
+~~~~
+
+~~~~
+-t		**type of database (sqlite, postgresql, mysql)**
+-d		**database name**
+-h		host (e.g. localhost)
+-p		port (usually defaults to 5432 so can be left out)
+-u		username
+-pd		password
+-o		open saved database (remember the name you saved it as)
+~~~~
+ - Bold means essential unless opening saved database
 
 ## Quickstart Guide
 
 #### Dependencies
 
- - sqlite3 (should be installed in standard library)
+ - SQLalchemy
  - curses (should be installed in standard library)
 
 There are multiple installation methods:
 
-** Make sure you are running python3 **
+**Make sure you are running python3**
 
 ### PyPI
 
 ~~~~
 > sudo pip install sqlcrush			# may have to run pip3
-> sqlcrush
+> sqlcrush							# immediately run to go through setup
 ~~~~
 
 ### Manual
@@ -41,29 +75,20 @@ There are multiple installation methods:
 ~~~~
 > cd 'path'
 > sudo python3 setup.py install		# can use just python if error
-> sqlcrush
+> sqlcrush							# immediately run to go through setup
 ~~~~
 
 ### Uninstall
 
 ~~~
 > sudo pip uninstall sqlcrush
+> rm -rf ~/.sqlcrush
 ~~~
-
-## Usage
-
-To open a file, make sure to do the following:
-
-~~~~
-> cd 'path of file'
-> sqlcrush filename.db			# this may also be filename.sqlite3
-~~~~
-
-Make sure to quit using [q] since that will save the changes made. A hard close of the terminal window will cause all changes to be neglected and the database will remain as normal.
 
 ## Known Issues
 
  - Issues when terminal window reduced to pointless size
+ - Crash when sqlite3 database not first openned from within it's directory
 
 ## Licence
 
