@@ -1,6 +1,6 @@
 # **SQLcrush v0.1.2** - console based database editor
 
-Build using python and ncurses, SQLcrush is dedicated to allowing you to access and edit a database directly from the console. Ideal when doing bugtesting and by SSH into the server itself. Simply run SQLcrush to view, edit and manipulate the database of your choice. Works with SQLite3, PostgreSQL and MariaDB/MySQL.
+Build using python and ncurses, SQLcrush is dedicated to allowing you to access and edit a database directly from the console. Ideal when doing bugtesting and by SSH into the server itself. Simply run SQLcrush to view, edit and manipulate the database of your choice. Works with SQLite3, PostgreSQL and MariaDB/MySQL and even save your favourite databases.
 
 Everyone knows that a picture says 1000 words which is demonstrated below:
 
@@ -8,8 +8,8 @@ Everyone knows that a picture says 1000 words which is demonstrated below:
 
 ## Features
 
- - Open up SQLite3/PostgreSQL/MySQL databased right from the console
- - Save the database and open it simply and quickly without typing the specs again
+ - Open up SQLite3/PostgreSQL/MySQL databased right from the console (UPDATE)
+ - Save the database and open it simply and quickly without typing the specs again (UPDATE
  - View each table and it's structure, browsing the content
  - Edit the content easily
  - Add and delete entries
