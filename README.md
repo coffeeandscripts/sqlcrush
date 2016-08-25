@@ -1,6 +1,8 @@
-# **SQLcrush v0.1.3** - console based database editor
+# **SQLcrush v0.1.4** - console based database editor
 
 Build using python and ncurses, SQLcrush is dedicated to allowing you to access and edit a database directly from the console. Ideal when doing bugtesting and by SSH into the server itself. Simply run SQLcrush to view, edit and manipulate the database of your choice. Works with SQLite3, PostgreSQL and MariaDB/MySQL.
+
+You can now apply your own queries with a query mode that can be entered by pressing k.
 
 Everyone knows that a picture says 1000 words which is demonstrated below:
 
@@ -51,6 +53,14 @@ You can then save these setting in the app itself by pressing [s] and giving it 
 ~~~~
  - Bold means essential unless opening saved database
 
+### Query Mode
+
+SQLcrush automatically saves your queries if they produce viewable tables such as through SELECT. These can be immediately re-entered by scrolling through them and hitting enter, or deleting them simply by pressing d.
+
+Query mode can be toggled via pressing k. A new query can be made when in query mode by pressing n and entering the appropriate query, followed by control-g when done. When a table is viewed in query mode, the individual cells cannot be updated, deleted and a new entry cannot be made.
+
+INSERT, DELETE and CREATE are all functional within the query editor, and if effective will not present the user with an error. It will however not save these as favourite queries as it is expected that these are one off actions.
+
 ## Quickstart Guide
 
 #### Dependencies
@@ -91,7 +101,16 @@ There are multiple installation methods:
 ## Known Issues
 
  - Issues when terminal window reduced to pointless size
- - Crash when sqlite3 database not first openned from within it's directory
+ - Crash when sqlite3 database not first openned from within its own directory
+ - Cursor not visible when entering text
+
+## Troubleshooting:
+
+Q: I'm unable to install SQLcrush since psycopg2 is asking for pg_config.
+A: Please install postgresql on your system even if you don't intend to use it.
+
+Q: I can't use backspace when I try enter a query. PS, I'm on a Mac.
+A: If you're using standard Mac terminal, you can either go into Preferences>Profiles>Advanced and select "Delete sends Control-H" or you can manually enter Control-h in order to backspace/delete text.
 
 ## Licence
 

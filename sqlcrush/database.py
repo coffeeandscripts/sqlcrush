@@ -383,3 +383,105 @@ def close_databases(current_real_database, current_database, open_database, tabl
     real_database.close()
 
     os.system("rm " + current_database)
+
+def new_user_query(scr_dim, scr_query_main, open_database):
+
+    scr_query_main.addstr(1, 1, "Enter new query:    Ctrl-g to enter")
+
+    for line in range(scr_dim[0]-10):
+        if line < 8:
+            line_print = " " + str(line)
+        else:
+            line_print = str(line)
+        scr_query_main.addstr(line+2, 0, str(line+1))
+
+    scr_query_main.refresh()
+
+    new_user_query = user_input.new_query_input(scr_dim, scr_query_main)
+
+    try:
+        new_user_query = new_user_query.rstrip("\n")
+        with open_database.connect() as conn:
+            new_query_results = conn.execute(new_user_query).fetchall()
+    except:
+        try:
+            with open_database.connect() as conn:
+                conn.execute(new_user_query)
+                conn.commit()
+        except:
+            scr_query_main.addstr(1, 1, "User query failed..", curses.A_REVERSE)
+            scr_query_main.refresh()
+            time.sleep(2)
+            new_user_query = "000"
+
+    return new_user_query
+
+def favourite_queries():
+    
+    root_path = os.path.expanduser("~")
+
+    try:
+        f = open(root_path + "/.sqlcrush/favourite_queries", "r")
+        
+        fav_qs = f.readlines()
+    except:
+        fav_qs = []
+
+    return fav_qs
+
+def delete_fav_query(cursor):
+
+    root_path = os.path.expanduser("~")
+
+    f = open(root_path + "/.sqlcrush/favourite_queries", "r")
+    fav_queries = f.readlines()
+    f.close()
+    new_fav_queries = []
+    counter = 1
+    for line in fav_queries:
+        if counter != cursor[0] + cursor[1]:
+            new_fav_queries.append(line)
+        counter = counter + 1
+    os.system("rm " + str(root_path) + "/.sqlcrush/favourite_queries")
+
+    f = open(root_path + "/.sqlcrush/favourite_queries", "a+")
+    for line in new_fav_queries:
+        f.write(line.rstrip("\n"))
+        f.write("\n")
+
+def save_query(user_query):
+
+    user_query = user_query + "\n"
+
+    root_path = os.path.expanduser("~")
+
+    with open(root_path + "/.sqlcrush/favourite_queries", "a+") as f:
+        f.write(user_query)
+
+def run_user_query(cursor_main, open_database):
+
+    root_path = os.path.expanduser("~")
+
+    f = open(root_path + "/.sqlcrush/favourite_queries", "r")
+    fav_queries = f.readlines()
+    f.close()
+
+    new_user_query = fav_queries[cursor_main[0] + cursor_main[1] - 1]
+
+    try:
+        new_user_query = new_user_query.rstrip("\n")
+        with open_database.connect() as conn:
+            new_query_results = conn.execute(new_user_query).fetchall()
+    except:
+        try:
+            with open_database.connect() as conn:
+                conn.execute(new_user_query)
+                conn.commit()
+        except:
+            scr_query_main.addstr(1, 1, "User query failed..", curses.A_REVERSE)
+            scr_query_main.refresh()
+            time.sleep(2)
+            new_user_query = "000"
+
+    return new_user_query
+

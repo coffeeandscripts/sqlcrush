@@ -150,3 +150,12 @@ def save_database_name(scr_dim, scr_bottom):
     new_save_input = new_save_box.edit()
 
     return new_save_input
+
+def new_query_input(scr_dim, scr_query_main):
+
+    new_query_window = curses.newwin(scr_dim[0]-10, scr_dim[1]-6, 6, 3)
+    new_query_box = textpad.Textbox(new_query_window)
+    new_query_window.refresh()
+    new_user_query = new_query_box.edit()
+
+    return new_user_query
