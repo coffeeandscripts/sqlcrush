@@ -1,7 +1,7 @@
 from setuptools import setup
 
 setup(name='sqlcrush',
-        version='0.1.3',
+        version='0.1.4',
         description='console based database editor',
         url='http://github.com/coffeeandscripts/sqlcrush',
         author='coffeeandscripts',
@@ -9,6 +9,6 @@ setup(name='sqlcrush',
         license='GNU',
         scripts=['bin/sqlcrush',],
         packages=['sqlcrush',],
-        install_requires=['sqlalchemy', 'psycopg2', 'pymysql',],
+        install_requires=['sqlalchemy', 'pymysql', 'psycopg2',],
         include_package_data=True
 )
