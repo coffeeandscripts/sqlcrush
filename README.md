@@ -1,6 +1,6 @@
 # **SQLcrush v0.1.4** - console based database editor
 
-Build using python and ncurses, SQLcrush is dedicated to allowing you to access and edit a database directly from the console. Ideal when doing bugtesting and by SSH into the server itself. Simply run SQLcrush to view, edit and manipulate the database of your choice. Works with SQLite3, PostgreSQL and MariaDB/MySQL and even save your favourite databases.
+Build using python and ncurses, SQLcrush is dedicated to allowing you to access and edit a database directly from the console. Ideal when doing bugtesting and by SSH into the server itself. Simply run SQLcrush to view, edit and manipulate the database of your choice. Works with SQLite3, PostgreSQL and MariaDB/MySQL.
 
 You can now apply your own queries with a query mode that can be entered by pressing k.
 
@@ -10,8 +10,8 @@ Everyone knows that a picture says 1000 words which is demonstrated below:
 
 ## Features
 
- - Open up SQLite3/PostgreSQL/MySQL database right from the console (UPDATE)
- - Save the database and open it simply and quickly without typing the specs again (UPDATE
+ - Open up SQLite3/PostgreSQL/MySQL databased right from the console
+ - Save the database and open it simply and quickly without typing the specs again
  - View each table and it's structure, browsing the content
  - Edit the content easily
  - Add and delete entries
@@ -107,9 +107,11 @@ There are multiple installation methods:
 ## Troubleshooting:
 
 Q: I'm unable to install SQLcrush since psycopg2 is asking for pg_config.
+
 A: Please install postgresql on your system even if you don't intend to use it.
 
 Q: I can't use backspace when I try enter a query. PS, I'm on a Mac.
+
 A: If you're using standard Mac terminal, you can either go into Preferences>Profiles>Advanced and select "Delete sends Control-H" or you can manually enter Control-h in order to backspace/delete text.
 
 ## Licence
