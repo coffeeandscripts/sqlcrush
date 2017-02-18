@@ -206,6 +206,7 @@ current_real_database = 0
 database_dir = 0
 query_state = 0
 show_query = 0
+updatedData = 1                 # if 1, gets new database information
 
 # Based on what the user inputs
 if len(sys.argv) == 1:
@@ -324,18 +325,20 @@ while x != ord("q"):        # quit on [q]
 
                 # tries to open the database again 3 times max
                 n = 0
-                while n < 3:
-                    try:
-                        open_database = database.connect_database(n, current_real_database, dbname, user, host, password, port, socket, database_type, saved_database)
-                        n = 3
-                    except:
-                        n = n + 1
-                        if n == 3:
-                            #if there is a failure, it exits quickly after closing ncurses
-                            term_scr(scr)
-                            print("Critical failure")
-                            time.sleep(1)
-                            sys.exit()
+                if updatedData == 1:
+                    while n < 3:
+                        try:
+                            open_database = database.connect_database(n, current_real_database, dbname, user, host, password, port, socket, database_type, saved_database)
+                            n = 3
+                            updatedData = 0
+                        except:
+                            n = n + 1
+                            if n == 3:
+                                #if there is a failure, it exits quickly after closing ncurses
+                                term_scr(scr)
+                                print("Critical failure")
+                                time.sleep(1)
+                                sys.exit()
 
                 # use [enter] to switch windows
                 if x == 9:          # [enter]
@@ -793,6 +796,7 @@ while x != ord("q"):        # quit on [q]
                             if find_list[n] == -1:
                                 find_list.remove(find_list[n])
                             n = n + 1
+                updatedData = 1
             elif x == 100 and current_screen == 3:
                 database.delete_fav_query(cursor_main)
                 cursor_main[0] = cursor_main[0] - 1
@@ -807,18 +811,21 @@ while x != ord("q"):        # quit on [q]
                         cursor_sub[1] = cursor_sub[1] - 1
                     else:
                         cursor_sub[0] = cursor_sub[0] - 1
-
+                updatedData = 1
             if x == 117 and show_query != 1:        # u
                 if open_window == 1 and cursor_main[2] == 1 and cursor_sub[1] + cursor_sub[0] > 1 and cursor_sub[2] + cursor_sub[3] > 0:
                     table_executions = database.update_database_cell(cursor_main, cursor_sub, columns, shown_tables, current_table, open_database, scr_bottom, scr_dim, table_executions, find_list)
+                    updatedData = 1
 
             if x == 110 and show_query != 1:        # n
                 if open_window == 1 and cursor_main[2] == 2:
                     scr_show_main.addstr(1, 1, "New SQL execution:", curses.A_REVERSE)
                     scr_show_main.refresh()
                     table_executions = database.new_execution(cursor_main, cursor_sub, table_executions, scr_dim, open_database, scr_show_main, shown_tables, scr_bottom)
+                    updatedData = 1
                 if open_window == 1 and cursor_main[2] == 1:
                     table_executions = database.new_entry(cursor_main, cursor_sub, table_executions, scr_dim, open_database, scr_bottom, shown_tables, columns)
+                    updatedData = 1
                 if current_screen == 3:
                     query_state = 1
             if x == 261 and (cursor_sub != [0, 0, 0, 0] or show_query != 1):        # right
