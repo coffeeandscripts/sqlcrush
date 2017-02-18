@@ -1,7 +1,7 @@
 from setuptools import setup
 
 setup(name='sqlcrush',
-        version='0.1.4',
+        version='0.1.5',
         description='console based database editor',
         url='http://github.com/coffeeandscripts/sqlcrush',
         author='coffeeandscripts',
