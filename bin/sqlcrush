@@ -1,5 +1,11 @@
 #!/usr/bin/env python
 
+## PyPy Support ##
+import platform
+if platform.python_implementation() == "PyPy":
+    from psycopg2cffi import compat
+    compat.register()
+
 ## IMPORTS ##
 import curses
 import time
