@@ -397,7 +397,9 @@ def new_user_query(scr_dim, scr_query_main, open_database):
 
     scr_query_main.refresh()
 
+    curses.set_curs(1)
     new_user_query = user_input.new_query_input(scr_dim, scr_query_main)
+    curses.set_curs(0)
 
     try:
         new_user_query = new_user_query.rstrip("\n")
