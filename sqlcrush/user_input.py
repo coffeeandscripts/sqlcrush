@@ -147,8 +147,10 @@ def save_database_name(scr_dim, scr_bottom):
     new_save_window.refresh()
     scr_bottom.addstr(0, 1, "Save:", curses.A_REVERSE)
     scr_bottom.refresh()
+    curses.curs_set(1)
     new_save_input = new_save_box.edit()
-
+    curses.curs_set(0)
+    
     return new_save_input
 
 def new_query_input(scr_dim, scr_query_main):
